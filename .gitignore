@@ -1,0 +1,16 @@
+*.pyc
+*.swp
+.idea
+.tags
+*.iml
+*.tiff
+*.png
+*.gcode
+*.bak
+*.orig
+*.o
+*.*~
+build
+dist
+*.egg*
+.DS_Store
