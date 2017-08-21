@@ -1,7 +1,7 @@
 <div class="row-fluid">
     <div class="span6">
-		<h1>State</h1>
-		{{ _('PNP State') }}: <strong data-bind="text: stateString"></strong><br>
+		<h1>Camera Documentation Tool</h1>
+		{{ _('GCode State') }}: <strong data-bind="text: stateString"></strong><br>
 		{{ _('Current operation') }}: <strong data-bind="text: currentOperation"></strong><br>
 		{{ _('DEBUG') }}: <strong data-bind="text: debugvar"></strong><br>
 	</div>
@@ -15,15 +15,26 @@
     <div class="accordion-group">
 
         <div class="accordion-heading">
-            <a class="accordion-toggle" data-toggle="collapse" data-parent="#accordion" href="#tray"><h5>Tray</h5></a>
+            <a class="accordion-toggle" data-toggle="collapse" data-parent="#accordion" href="#tray"><h5>Camera lookup grid</h5></a>
         </div>
         <div id="tray" class="accordion-body collapse in">
             <div class="accordion-inner">
 				<div class="row-fluid">
 				    <div class="span12">
-				    	<canvas id="trayCanvas" width="500" height="250"></canvas>
+				    	<canvas id="trayCanvas" width="500" height="500"></canvas>
 				    </div>
 				</div>
+
+        <div class="layer-buttons btn-group-toolbar row-fluid">
+            <button type="button" class="btn btn-primary btn-medium span6" data-bind = "click: decrementLayer, enable: layerSelectionEnabled() && layerDownEnabled()">
+                <i class="fa fa-arrow-left"></i>
+                <span>{{ _('Previous layer') }}</span>
+            </button>
+            <button type="button" class="btn btn-primary btn-medium span6" data-bind = "click: incrementLayer, enable: layerSelectionEnabled() && layerUpEnabled()">
+                <span>{{ _('Next layer') }}</span>
+                <i class="fa fa-arrow-right"></i>
+            </button>
+        </div>
 			</div>
 		</div>
 
@@ -34,15 +45,11 @@
             <div class="accordion-inner">
 				<div class="row-fluid">
 				    <div class="span6">
-				    	<h1>Head camera</h1>
+				    	<h1>Compiled Image</h1>
 				    	<img src="" id="headCameraImage">
-				    </div>
-				    <div class="span6">
-				    	<h1>Bed camera</h1>
-				    	<img src="" id="bedCameraImage">
 				    </div>
 				</div>
 			</div>
 		</div>
 	</div>
-</div>	
+</div>
