@@ -68,6 +68,18 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         self._state = self.STATE_NONE
         self._currentPart = 0
         self._currentZ = None
+        self.GCoordsList = []
+        self.CameraGridCoordsList = []
+        self.currentLayer = 0
+
+        self.maxX = 0.0
+        self.maxY = 0.0
+        self.minX = 0.0
+        self.minY = 0.0
+        self.centerY = 0.0
+        self.centerX = 0.0
+        self.CamPixelX = 0
+        self.CamPixelY = 0
 
 
     # def on_after_startup(self):
@@ -126,15 +138,15 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
 
     def get_template_configs(self):
         return [
-            dict(type="tab", template="OctoCamDox_tab.jinja2", custom_bindings=True),
-            dict(type="settings", template="OctoCamDox_settings.jinja2", custom_bindings=True)
+            dict(type="tab", template="OctoCamDox_tab.jinja2"),
+            dict(type="settings", template="OctoCamDox_settings.jinja2")
             #dict(type="settings", custom_bindings=True)
         ]
 
     def get_assets(self):
         return dict(
             js=["js/OctoCamDox.js",
-                "js/smdTray.js",
+                "js/camGrid.js",
                 "js/settings.js"]
         )
 
@@ -172,7 +184,17 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
 
             #Extract the GCodes for the CameraPath Algortihm
             newCamExtractor.extractCameraGCode(f)
-            self._createCameraGrid(newCamExtractor.getCoordList(),1,50,50)
+
+            self.GCoordsList = newCamExtractor.getCoordList()
+            self.currentLayer = 1
+            self.CamPixelX = 50
+            self.CamPixelY = 50
+
+            self._createCameraGrid(
+                self.GCoordsList,
+                self.currentLayer,
+                self.CamPixelX,
+                self.CamPixelY)
 
 
     def _createCameraGrid(self,inputList,onLayer,CamResX,CamResY):
@@ -188,6 +210,17 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         newGridMaker.createCameraLookUpGrid()
         newGridMaker.drawAllFoundCameraPositions(Image)
         newGridMaker.drawCameraLines(Image)
+
+        #Retrieve the necessary variables to be forwarded to the Octoprint Canvas
+        self.CameraGridCoordsList = newGridMaker.getCameraCoords()
+        self.maxX = newGridMaker.getMaxX()
+        self.maxY = newGridMaker.getMaxY()
+        self.minX = newGridMaker.getMinX()
+        self.minY = newGridMaker.getMinX()
+        self.centerY = newGridMaker.getCenterY()
+        self.centerX = newGridMaker.getCenterX()
+        self.CamPixelX = newGridMaker.getCampixelX()
+        self.CamPixelY = newGridMaker.getCampixelY()
 
         #Image.drawGridBox(0, 0, 50, 50)
         #Draw Maximums and Minimums
@@ -354,25 +387,20 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             info="dummy"
         )
         if event == "FILE":
-            if self.smdparts.isFileLoaded():
-
+            if self.GCoordsList != None:
                 # compile part information
-                partIds = self.smdparts.getPartIds()
-                partArray = []
-                for partId in partIds:
-                    partArray.append(
-                        dict(
-                            id = partId,
-                            name = self.smdparts.getPartName(partId),
-                            partPosition = self.smdparts.getPartPosition(partId),
-                            shape = self.smdparts.getPartShape(partId),
-                            pads = self.smdparts.getPartPads(partId)
-                        )
-                    )
-
                 data = dict(
-                    partCount = self.smdparts.getPartCount(),
-                    parts = partArray
+                    gcodeCoordinates = self.GCoordsList,
+                    cameraCoordinates = self.CameraGridCoordsList,
+                    maximumX = self.maxX,
+                    maximumY = self.maxY,
+                    minimumX = self.minX,
+                    minimumY = self.minY,
+                    centerPosY = self.centerY,
+                    centerPosX = self.centerX,
+                    CamPixelResX = self.CamPixelX,
+                    CamPixelResY = self.CamPixelY,
+                    currentselectedLayer = self.currentLayer
                 )
         elif event == "OPERATION":
             data = dict(

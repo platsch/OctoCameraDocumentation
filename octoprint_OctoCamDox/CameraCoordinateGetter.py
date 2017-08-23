@@ -316,3 +316,30 @@ class CameraGridMaker:
         #Create the lower half of the Grid
         #by making a point symmetrical Copy
         CameraCoords.extend(self.makePointSymmetry(cacheList))
+
+    def getMinX(self):
+        return minX
+
+    def getMaxX(self):
+        return maxX
+
+    def getMinY(self):
+        return minY
+
+    def getMaxY(self):
+        return maxY
+
+    def getCampixelX(self):
+        return CamPixelX
+
+    def getCampixelY(self):
+        return CamPixelY
+
+    def getCenterX(self):
+        return centerX
+
+    def getCenterY(self):
+        return centerY
+
+    def getCameraCoords(self):
+        return CameraCoords
