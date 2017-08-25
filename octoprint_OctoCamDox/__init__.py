@@ -30,8 +30,10 @@ import time
 import datetime
 import base64
 import shutil
+import json
 
 from .GCode_processor import CameraGCodeExtraction as GCodex
+from .GCode_processor import CustomJSONEncoder as CoordJSONify
 from .CameraCoordinateGetter import CameraGridMaker,ImageOperations
 
 
@@ -82,13 +84,13 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         self.CamPixelY = 0
 
 
-    # def on_after_startup(self):
+    def on_after_startup(self):
     #     self.imgproc = ImageProcessing(
     #         float(self._settings.get(["tray", "boxsize"])),
     #         int(self._settings.get(["camera", "bed", "binary_thresh"])),
     #         int(self._settings.get(["camera", "head", "binary_thresh"])))
     #     #used for communication to UI
-    #     self._pluginManager = octoprint.plugin.plugin_manager()
+        self._pluginManager = octoprint.plugin.plugin_manager()
 
 
     def get_settings_defaults(self):
@@ -195,6 +197,9 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
                 self.currentLayer,
                 self.CamPixelX,
                 self.CamPixelY)
+
+            self._logger.info("Created the camera lookup grid succesfully from the file: %s", payload.get("file"))
+            self._updateUI("FILE", "")
 
 
     def _createCameraGrid(self,inputList,onLayer,CamResX,CamResY):
@@ -386,12 +391,12 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         data = dict(
             info="dummy"
         )
-        if event == "FILE":
-            if self.GCoordsList != None:
+        if (event == "FILE"):
+            if (self.GCoordsList != None):
                 # compile part information
                 data = dict(
-                    gcodeCoordinates = self.GCoordsList,
-                    cameraCoordinates = self.CameraGridCoordsList,
+                    gcodeCoordinates = json.dumps(self.GCoordsList[1],cls=CoordJSONify),
+                    cameraCoordinates = json.dumps(self.CameraGridCoordsList,cls=CoordJSONify),
                     maximumX = self.maxX,
                     maximumY = self.maxY,
                     minimumX = self.minX,
@@ -427,4 +432,4 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             event=event,
             data=data
         )
-        self._pluginManager.send_plugin_message("OctoCamDox", message)
+        self._pluginManager.send_plugin_message(__plugin_name__, message)

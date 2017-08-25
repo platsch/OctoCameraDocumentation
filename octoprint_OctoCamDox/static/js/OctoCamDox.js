@@ -66,7 +66,8 @@ $(function() {
           if(plugin == "OctoCamDox") {
               if(data.event == "FILE") {
                   if(data.data.hasOwnProperty("cameraCoordinates")) {
-                      self.stateString("Loaded file with GCodes");
+
+                      self.stateString("Succesfully created and loaded Camera Grid from GCode");
                       //initialize the tray
                       _cameraGrid.erase();
 
