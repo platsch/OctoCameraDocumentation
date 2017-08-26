@@ -1,17 +1,37 @@
-function camGrid(cols, rows, boxSize, canvas) {
-	var self = this;
+function camGrid(width, height, centerX, centerY, currentSelectedLayer, GCodeCoordinates, cameraCoordinates, canvas){
+		var self = this;
 
-	var _cols = cols;
-    var _rows= rows;
-    var _trayBoxSize = boxSize;
-    var _trayCanvas = canvas;
-    var _parts = {};
+		var _width = width;
+    var _height= height;
+		var _centerX = centerX;
+		var _centerY = centerY;
+		var _currentSelectedLayer = currentSelectedLayer;
+		var _GCodeCoordinates = GCodeCoordinates;
+		var _cameraCoordinates = cameraCoordinates;
+		var _trayCanvas = canvas;
+
 
     self.erase = function() {
-        _parts = {};
         _drawTray();
-    }
+    };
 
+		self.drawPrintables = function() {
+			console.log("Draw Printables entered")
+				// _drawPrintables();
+		}
+
+	function _drawGCodeLines () {
+		if (_trayCanvas && _trayCanvas.getContext) {
+	      var ctx = _trayCanvas.getContext("2d");
+				var i = o
+				while (i < _GCodeCoordinates.length-1){
+					ctx.beginPath();
+					ctx.moveTo(_GCodeCoordinates[i][0], _GCodeCoordinates[i][1]);
+					ctx.lineTo(_GCodeCoordinates[i+1][0],_GCodeCoordinates[i+1][1]);
+					ctx.stroke();
+			}
+		}
+	}
 
 	function _drawTray () {
 		if (_trayCanvas && _trayCanvas.getContext) {
@@ -28,8 +48,8 @@ function camGrid(cols, rows, boxSize, canvas) {
                 ctx.fillRect(0,0,size_x,size_y);
                 ctx.strokeRect (0,0,size_x,size_y);
 
-				for(var x=0; x<_cols; x++) {
-                    for(var y=0; y<_rows; y++) {
+				for(var x=0; x<_width; x++) {
+                    for(var y=0; y<_height; y++) {
                         _drawTrayBox(x+1, y+1, canvasBoxSize);
                     }
                 }
@@ -47,8 +67,8 @@ function camGrid(cols, rows, boxSize, canvas) {
                 ctx.lineWidth = 4;
                 ctx.strokeStyle = "green";
                 ctx.fillStyle = "white";
-                ctx.strokeRect (col*size+ctx.lineWidth/2,(_rows-1)*size-row*size+ctx.lineWidth/2,size-ctx.lineWidth/2,size-ctx.lineWidth/2);
-                ctx.fillRect (col*size+ctx.lineWidth,(_rows-1)*size-row*size+ctx.lineWidth,size-ctx.lineWidth,size-ctx.lineWidth);
+                ctx.strokeRect (col*size+ctx.lineWidth/2,(_height-1)*size-row*size+ctx.lineWidth/2,size-ctx.lineWidth/2,size-ctx.lineWidth/2);
+                ctx.fillRect (col*size+ctx.lineWidth,(_height-1)*size-row*size+ctx.lineWidth,size-ctx.lineWidth,size-ctx.lineWidth);
             }
         }
     }
@@ -61,7 +81,7 @@ function camGrid(cols, rows, boxSize, canvas) {
             if (ctx) {
                 var size_x = ctx.canvas.width;
                 var size_y = ctx.canvas.height;
-                boxSize = Math.min((size_x-4)/_cols, (size_y-4)/_rows);
+                boxSize = Math.min((size_x-4)/_width, (size_y-4)/_height);
             }
         }
         return Math.floor(boxSize);

@@ -10,24 +10,32 @@ $(function() {
         var _cameraGridCanvas = document.getElementById('camGridCanvas');
 
         self.stateString = ko.observable("No file loaded");
-        self.currentOperation = ko.observable("");
+        self.cameraResolution = ko.observable("");
         self.debugvar = ko.observable("");
 
         self.layerSelectionEnabled = ko.observable(false);
         self.layerUpEnabled = ko.observable(false);
+
+        var BoxWidth;
+        var BoxHeight;
+        var centerX;
+        var centerY;
+        var selectedLayer;
+        var gcodeCoords;
+        var camCoords;
+
         //white placeholder images
         document.getElementById('headCameraImage').setAttribute( 'src', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3wMRCQAfAmB4CgAAABl0RVh0Q29tbWVudABDcmVhdGVkIHdpdGggR0lNUFeBDhcAAAAMSURBVAjXY/j//z8ABf4C/tzMWecAAAAASUVORK5CYII=');
 
 
-        // This will get called before the ViewModel gets bound to the DOM, but after its depedencies have
-        // already been initialized. It is especially guaranteed that this method gets called _after_ the settings
-        // have been retrieved from the OctoPrint backend and thus the SettingsViewModel been properly populated.
-        self.onBeforeBinding = function() {
-            self.traySettings = self.settings.settings.plugins.OctoCamDox.tray;
-            _cameraGrid = new camGrid(self.traySettings.columns(), self.traySettings.rows(), self.traySettings.boxsize(), _cameraGridCanvas);
-            _cameraGridCanvas.addEventListener("click", self.onSmdTrayClick, false); //"click, dblclick"
-            _cameraGridCanvas.addEventListener("dblclick", self.onSmdTrayDblclick, false); //"click, dblclick"
-        };
+        // // This will get called before the ViewModel gets bound to the DOM, but after its depedencies have
+        // // already been initialized. It is especially guaranteed that this method gets called _after_ the settings
+        // // have been retrieved from the OctoPrint backend and thus the SettingsViewModel been properly populated.
+        // self.onBeforeBinding = function() {
+        //     _cameraGrid = new camGrid(BoxWidth,BoxHeight,centerX,centerY,selectedLayer,gcodeCoords,gcodeCoords,_cameraGridCanvas);
+        //     _cameraGridCanvas.addEventListener("click", self.onSmdTrayClick, false); //"click, dblclick"
+        //     _cameraGridCanvas.addEventListener("dblclick", self.onSmdTrayDblclick, false); //"click, dblclick"
+        // };
 
         self.incrementLayer = function() {
             var value = self.layerSlider.slider('getValue') + 1;
@@ -66,22 +74,27 @@ $(function() {
           if(plugin == "OctoCamDox") {
               if(data.event == "FILE") {
                   if(data.data.hasOwnProperty("cameraCoordinates")) {
-
                       self.stateString("Succesfully created and loaded Camera Grid from GCode");
                       //initialize the tray
-                      _cameraGrid.erase();
+                        BoxWidth = data.data.CamPixelResX;
+                        BoxHeight = data.data.CamPixelResY;
+                        centerX = data.data.centerPosX;
+                        centerY = data.data.centerPosY;
+                        selectedLayer = data.data.currentselectedLayer;
+                        gcodeCoords = data.data.gcodeCoordinates;
+                        camCoords = data.data.cameraCoordinates;
 
-					            //extract part information
-                      if( data.data.hasOwnProperty("parts") ) {
-          							var parts = data.data.parts;
-          							for(var i=0; i < parts.length; i++) {
-          								_cameraGrid.addPart(parts[i]);
-          							}
-          						}
-                      }else{
-                          self.stateString("No SMD part in this file!");
-                            }
-                      }
+                        _cameraGrid = new camGrid(BoxWidth,BoxHeight,centerX,centerY,selectedLayer,gcodeCoords,gcodeCoords,_cameraGridCanvas);
+                      // _cameraGrid.erase();
+                        _cameraGrid.drawPrintables();
+            		      }
+                  //Set used camera resoiuton
+                  if(data.data.hasOwnProperty("CamPixelResX") && data.data.hasOwnProperty("CamPixelResY")) {
+                    var width = data.data.CamPixelResX;
+                    var height = data.data.CamPixelResY;
+                    self.cameraResolution(width + "x" + height);
+                    }
+                  }
                   else if(data.event == "OPERATION") {
                       self.currentOperation(data.data.type + " part nr " + data.data.part);
                   }
@@ -96,9 +109,6 @@ $(function() {
                   }
                   else if(data.event == "HEADIMAGE") {
                       document.getElementById('headCameraImage').setAttribute( 'src', data.data.src );
-                  }
-                  else if(data.event == "BEDIMAGE") {
-                      document.getElementById('bedCameraImage').setAttribute( 'src', data.data.src );
                   }
               //self.debugvar("Plugin = OctoCamDox");
           }
