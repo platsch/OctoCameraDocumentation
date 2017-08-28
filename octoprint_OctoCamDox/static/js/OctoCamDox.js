@@ -32,7 +32,7 @@ $(function() {
         // // already been initialized. It is especially guaranteed that this method gets called _after_ the settings
         // // have been retrieved from the OctoPrint backend and thus the SettingsViewModel been properly populated.
         // self.onBeforeBinding = function() {
-        //     _cameraGrid = new camGrid(BoxWidth,BoxHeight,centerX,centerY,selectedLayer,gcodeCoords,gcodeCoords,_cameraGridCanvas);
+        //     _cameraGrid = new camGrid(BoxWidth,BoxHeight,centerX,centerY,selectedLayer,gcodeCoords,camCoords,_cameraGridCanvas);
         //     _cameraGridCanvas.addEventListener("click", self.onSmdTrayClick, false); //"click, dblclick"
         //     _cameraGridCanvas.addEventListener("dblclick", self.onSmdTrayDblclick, false); //"click, dblclick"
         // };
@@ -76,15 +76,16 @@ $(function() {
                   if(data.data.hasOwnProperty("cameraCoordinates")) {
                       self.stateString("Succesfully created and loaded Camera Grid from GCode");
                       //initialize the tray
+                        console.log("Start JSON fetching");
                         BoxWidth = data.data.CamPixelResX;
                         BoxHeight = data.data.CamPixelResY;
                         centerX = data.data.centerPosX;
                         centerY = data.data.centerPosY;
                         selectedLayer = data.data.currentselectedLayer;
-                        gcodeCoords = data.data.gcodeCoordinates;
-                        camCoords = data.data.cameraCoordinates;
-
-                        _cameraGrid = new camGrid(BoxWidth,BoxHeight,centerX,centerY,selectedLayer,gcodeCoords,gcodeCoords,_cameraGridCanvas);
+                        gcodeCoords = JSON.parse(data.data.gcodeCoordinates);
+                        camCoords = JSON.parse(data.data.cameraCoordinates);
+                        console.log("Fetching JSON Data complete");
+                        _cameraGrid = new camGrid(BoxWidth,BoxHeight,centerX,centerY,selectedLayer,gcodeCoords,camCoords,_cameraGridCanvas);
                       // _cameraGrid.erase();
                         _cameraGrid.drawPrintables();
             		      }

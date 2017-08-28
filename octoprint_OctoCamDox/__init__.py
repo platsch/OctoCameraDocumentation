@@ -66,6 +66,7 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
 
     FEEDRATE = 4000.000
 
+
     def __init__(self):
         self._state = self.STATE_NONE
         self._currentPart = 0
@@ -211,10 +212,7 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
 
         #Execute all necessary operations to create the actual CameraGrid
         newGridMaker.getCoordinates()
-        newGridMaker.drawGCodeLines(Image)
         newGridMaker.createCameraLookUpGrid()
-        newGridMaker.drawAllFoundCameraPositions(Image)
-        newGridMaker.drawCameraLines(Image)
 
         #Retrieve the necessary variables to be forwarded to the Octoprint Canvas
         self.CameraGridCoordsList = newGridMaker.getCameraCoords()
@@ -226,18 +224,6 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         self.centerX = newGridMaker.getCenterX()
         self.CamPixelX = newGridMaker.getCampixelX()
         self.CamPixelY = newGridMaker.getCampixelY()
-
-        #Image.drawGridBox(0, 0, 50, 50)
-        #Draw Maximums and Minimums
-        Image.drawExtremaBounds()
-        #Draw Center of of the Extremes
-        #Image.drawCenterCircle(int(centerX), int(centerY))
-        #Image.drawBoxFromCenter(int(centerX), int(centerY))
-        # Resize the Image
-        Image.resizeImage(1024, 1024)
-        #Image.saveImage('Camera Grid')
-        WindowText = "Suggested Camera Grid on Layer " + str(onLayer)
-        Image.showImage(WindowText)
 
 
     """
@@ -395,7 +381,7 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             if (self.GCoordsList != None):
                 # compile part information
                 data = dict(
-                    gcodeCoordinates = json.dumps(self.GCoordsList[1],cls=CoordJSONify),
+                    gcodeCoordinates = json.dumps(self.GCoordsList,cls=CoordJSONify),
                     cameraCoordinates = json.dumps(self.CameraGridCoordsList,cls=CoordJSONify),
                     maximumX = self.maxX,
                     maximumY = self.maxY,

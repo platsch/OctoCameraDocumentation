@@ -17,6 +17,8 @@ function camGrid(width, height, centerX, centerY, currentSelectedLayer, GCodeCoo
 
 		self.drawPrintables = function() {
 			console.log("Draw Printables entered")
+			console.log("Resolution of the Cam box is width: " + _width + " height was: " + _height)
+			console.log("First GCode coordinate X: " + _GCodeCoordinates[0][0][0] + " Y: " + _GCodeCoordinates[0][0][0])
 				// _drawPrintables();
 		}
 
