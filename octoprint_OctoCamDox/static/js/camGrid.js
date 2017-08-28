@@ -12,27 +12,49 @@ function camGrid(width, height, centerX, centerY, currentSelectedLayer, GCodeCoo
 
 
     self.erase = function() {
-        _drawTray();
+        _drawWhiteBox();
     };
 
 		self.drawPrintables = function() {
-			console.log("Draw Printables entered")
-			console.log("Resolution of the Cam box is width: " + _width + " height was: " + _height)
-			console.log("First GCode coordinate X: " + _GCodeCoordinates[0][0][0] + " Y: " + _GCodeCoordinates[0][0][0])
-				// _drawPrintables();
+			// console.log("Draw Printables entered")
+			// console.log("Resolution of the Cam box is width: " + _width + " height was: " + _height)
+			// console.log("First GCode coordinate X: " + _GCodeCoordinates[0][0][0] + " Y: " + _GCodeCoordinates[0][0][0])
+			_drawGCodeLines (_currentSelectedLayer);
 		}
 
-	function _drawGCodeLines () {
+		self.reDrawLayer = function(inputLayer) {
+			_drawGCodeLines (inputLayer);
+		}
+
+	function _drawGCodeLines (inputLayer) {
 		if (_trayCanvas && _trayCanvas.getContext) {
 	      var ctx = _trayCanvas.getContext("2d");
-				var i = o
-				while (i < _GCodeCoordinates.length-1){
+				var i = 0
+				while (i < _GCodeCoordinates[inputLayer].length-2){
+					ctx.strokeStyle = "black";
 					ctx.beginPath();
-					ctx.moveTo(_GCodeCoordinates[i][0], _GCodeCoordinates[i][1]);
-					ctx.lineTo(_GCodeCoordinates[i+1][0],_GCodeCoordinates[i+1][1]);
+					ctx.moveTo(_GCodeCoordinates[inputLayer][i][0], _GCodeCoordinates[inputLayer][i][1]);
+					ctx.lineTo(_GCodeCoordinates[inputLayer][i+1][0], _GCodeCoordinates[inputLayer][i+1][1]);
 					ctx.stroke();
+					++i;
 			}
 		}
+	}
+
+	function _drawWhiteBox() {
+		if (_trayCanvas && _trayCanvas.getContext) {
+            var ctx = _trayCanvas.getContext("2d");
+            if (ctx) {
+                var size_x = ctx.canvas.width;
+                var size_y = ctx.canvas.height;
+                var canvasBoxSize = _getCanvasBoxSize();
+
+                //initialize white tray
+                ctx.fillStyle = "white";
+                ctx.fillRect(0,0,size_x,size_y);
+                // ctx.strokeRect (0,0,size_x,size_y);
+							}
+					}
 	}
 
 	function _drawTray () {

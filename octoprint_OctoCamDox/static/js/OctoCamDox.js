@@ -13,7 +13,7 @@ $(function() {
         self.cameraResolution = ko.observable("");
         self.debugvar = ko.observable("");
 
-        self.layerSelectionEnabled = ko.observable(false);
+        self.layerDownEnabled = ko.observable(false);
         self.layerUpEnabled = ko.observable(false);
 
         var BoxWidth;
@@ -38,37 +38,34 @@ $(function() {
         // };
 
         self.incrementLayer = function() {
-            var value = self.layerSlider.slider('getValue') + 1;
-            self.shiftLayer(value);
+            console.log("Button Up clicked");
+            selectedLayer += 1;
+            console.log("Selected Value is: " + selectedLayer);
+            _cameraGrid.erase();
+            _cameraGrid.reDrawLayer(selectedLayer);
+
+            self.layerDownEnabled(selectedLayer > 0);
+            self.layerUpEnabled(selectedLayer < gcodeCoords.length-1);
         };
 
         self.decrementLayer = function() {
-            var value = self.layerSlider.slider('getValue') - 1;
-            self.shiftLayer(value);
+            console.log("Button Down clicked");
+            selectedLayer -= 1;
+            console.log("Selected Value is: " + selectedLayer);
+            _cameraGrid.erase();
+            _cameraGrid.reDrawLayer(selectedLayer);
+
+            self.layerDownEnabled(selectedLayer > 0);
+            self.layerUpEnabled(selectedLayer < gcodeCoords.length-1);
         };
 
-        // catch mouseclicks at the tray for interactive part handling
-        self.onSmdTrayClick = function(event) {
-            var rect = _cameraGridCanvas.getBoundingClientRect();
-            var x = Math.floor(event.clientX - rect.left);
-            var y = Math.floor(event.clientY - rect.top);
-            return _cameraGrid.selectPart(x, y);
-        };
-
-        self.onSmdTrayDblclick = function(event) {
-            // highlight part on tray and find partId
-            var partId = self.onSmdTrayClick(event);
-
-            // execute pick&place operation
-            if(partId) {
-                // printer connected and not printing?
-                if(self.connection.isOperational() || self.connection.isReady()) {
-                    self.control.sendCustomCommand({ command: "M361 P" + partId});
-                }
+        self.onTabChange = function(current, previous) {
+            self.tabActive = current == "#tab_plugin_OctoCamDox";
+            if (self.tabActive && (selectedLayer != undefined)) {
+                // self.loadFile(self.selectedFile.path(), self.selectedFile.date());
+                _cameraGrid.reDrawLayer(selectedLayer);
             }
         };
-
-
 
        self.onDataUpdaterPluginMessage = function(plugin, data) {
           if(plugin == "OctoCamDox") {
@@ -86,8 +83,18 @@ $(function() {
                         camCoords = JSON.parse(data.data.cameraCoordinates);
                         console.log("Fetching JSON Data complete");
                         _cameraGrid = new camGrid(BoxWidth,BoxHeight,centerX,centerY,selectedLayer,gcodeCoords,camCoords,_cameraGridCanvas);
-                      // _cameraGrid.erase();
+
+                        // _cameraGrid.erase();
                         _cameraGrid.drawPrintables();
+
+                        if (selectedLayer == undefined) {
+                            self.layerDownEnabled(false);
+                            self.layerUpEnabled(false);
+                        }
+                        if (selectedLayer != undefined) {
+                            self.layerDownEnabled(false);
+                            self.layerUpEnabled(gcodeCoords.length-1 > 0);
+                        }
             		      }
                   //Set used camera resoiuton
                   if(data.data.hasOwnProperty("CamPixelResX") && data.data.hasOwnProperty("CamPixelResY")) {
