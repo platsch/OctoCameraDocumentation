@@ -15,7 +15,8 @@ from GCode_processor import Coordinate
 workList = []
 
 #Conversion from millimeters to pixel
-MillimeterToPixel = 3.779527559
+# MillimeterToPixel = 3.779527559
+MillimeterToPixel = 1
 
 #Stores the List of found centers for the Camera Run
 CameraCoords = []

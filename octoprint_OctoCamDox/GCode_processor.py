@@ -114,7 +114,7 @@ class CameraGCodeExtraction:
                         float(xy_values.group(2)))
                     self.shortCoordList.append(newCoord)
 
-        if(len(self.shortCoordList) >= 3):
+        if(len(self.shortCoordList) >= 10):
             self.masterCoordList.append(self.shortCoordList)
 
         self.shortCoordList = []

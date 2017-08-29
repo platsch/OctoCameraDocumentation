@@ -26,17 +26,19 @@ function camGrid(width, height, centerX, centerY, currentSelectedLayer, GCodeCoo
 			_drawGCodeLines (inputLayer);
 		}
 
+		self.drawCameragrid = function() {
+			_drawCamGrid();
+		}
+
 	function _drawGCodeLines (inputLayer) {
+		var ctx = _trayCanvas.getContext("2d");
 		if (_trayCanvas && _trayCanvas.getContext) {
-	      var ctx = _trayCanvas.getContext("2d");
-				var i = 0
-				while (i < _GCodeCoordinates[inputLayer].length-2){
+				for (var i = 0 ; i < _GCodeCoordinates[inputLayer].length-1 ; ++i){
 					ctx.strokeStyle = "black";
 					ctx.beginPath();
 					ctx.moveTo(_GCodeCoordinates[inputLayer][i][0], _GCodeCoordinates[inputLayer][i][1]);
 					ctx.lineTo(_GCodeCoordinates[inputLayer][i+1][0], _GCodeCoordinates[inputLayer][i+1][1]);
 					ctx.stroke();
-					++i;
 			}
 		}
 	}
@@ -82,20 +84,24 @@ function camGrid(width, height, centerX, centerY, currentSelectedLayer, GCodeCoo
 	}
 
     // draw a single tray box
-    function _drawTrayBox(col, row, size) {
-        col -=1;
-        row -=1;
+    function _drawTrayBox(x, y) {
         if (_trayCanvas && _trayCanvas.getContext) {
             var ctx = _trayCanvas.getContext("2d");
             if (ctx) {
-                ctx.lineWidth = 4;
+                ctx.lineWidth = 1;
                 ctx.strokeStyle = "green";
-                ctx.fillStyle = "white";
-                ctx.strokeRect (col*size+ctx.lineWidth/2,(_height-1)*size-row*size+ctx.lineWidth/2,size-ctx.lineWidth/2,size-ctx.lineWidth/2);
-                ctx.fillRect (col*size+ctx.lineWidth,(_height-1)*size-row*size+ctx.lineWidth,size-ctx.lineWidth,size-ctx.lineWidth);
+                // ctx.fillStyle = "white";
+                ctx.strokeRect (x-(_width/2),y-(_height/2),_width,_height);
+                // ctx.fillRect (width*size+ctx.lineWidth,(_height-1)*size-height*size+ctx.lineWidth,size-ctx.lineWidth,size-ctx.lineWidth);
             }
         }
     }
+
+		function _drawCamGrid() {
+			for (var i = 0 ; i < _cameraCoordinates.length ; ++i){
+				_drawTrayBox(_cameraCoordinates[i][0], _cameraCoordinates[i][1]);
+			}
+		}
 
     // returns the box size to use the available canvas-space in an optimal way
     function _getCanvasBoxSize() {

@@ -38,9 +38,7 @@ $(function() {
         // };
 
         self.incrementLayer = function() {
-            console.log("Button Up clicked");
             selectedLayer += 1;
-            console.log("Selected Value is: " + selectedLayer);
             _cameraGrid.erase();
             _cameraGrid.reDrawLayer(selectedLayer);
 
@@ -49,9 +47,7 @@ $(function() {
         };
 
         self.decrementLayer = function() {
-            console.log("Button Down clicked");
             selectedLayer -= 1;
-            console.log("Selected Value is: " + selectedLayer);
             _cameraGrid.erase();
             _cameraGrid.reDrawLayer(selectedLayer);
 
@@ -64,6 +60,7 @@ $(function() {
             if (self.tabActive && (selectedLayer != undefined)) {
                 // self.loadFile(self.selectedFile.path(), self.selectedFile.date());
                 _cameraGrid.reDrawLayer(selectedLayer);
+                _cameraGrid.drawCameragrid(selectedLayer);
             }
         };
 
@@ -86,6 +83,7 @@ $(function() {
 
                         // _cameraGrid.erase();
                         _cameraGrid.drawPrintables();
+                        _cameraGrid.drawCameragrid(selectedLayer);
 
                         if (selectedLayer == undefined) {
                             self.layerDownEnabled(false);
