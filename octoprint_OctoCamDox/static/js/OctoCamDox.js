@@ -81,6 +81,7 @@ $(function() {
                   if(data.data.hasOwnProperty("cameraCoordinates")) {
                       self.stateString("Succesfully created and loaded Camera Grid from GCode");
                       //initialize the the data
+                        selectedLayer = 0;
                         BoxWidth = data.data.CamPixelResX;
                         BoxHeight = data.data.CamPixelResY;
                         centerX = data.data.centerPosX;
@@ -90,7 +91,6 @@ $(function() {
                         _cameraGrid = new camGrid(BoxWidth,BoxHeight,centerX,centerY,selectedLayer,gcodeCoords,camCoords,_cameraGridCanvas);
 
                         // _cameraGrid.erase();
-                        selectedLayer = 0;
                         _redrawObjects();
                         _updateLayerHeader();
 

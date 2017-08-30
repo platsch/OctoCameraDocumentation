@@ -19,7 +19,7 @@ CameraCoords = []
 
 #Conversion from millimeters to pixel
 # MillimeterToPixel = 3.779527559
-MillimeterToPixel = 1
+MillimeterToPixel = 1.0
 
 #Stores the maximum Pixel size the camera provies. Its in Pixel x Pixel Format
 CamPixelX = 0
@@ -94,6 +94,7 @@ class CameraGridMaker:
     #and sets up the Bounding Box values
     def getCoordinates(self):
         global workList
+        workList = []
         for eachEntry in self.CordList:
             Coord = Coordinate(
                 int(eachEntry.x*MillimeterToPixel),
@@ -103,13 +104,13 @@ class CameraGridMaker:
             workList.append(Coord)
 
     #Draws the printed Object
-    def drawGCodeLines(self,img):
+    def drawGCodeLines(self,inputlist,img):
         i = 0
-        while i < len(workList) - 1:
-            xStart = workList[i].x
-            yStart = workList[i].y
-            xEnd = workList[i + 1].x
-            yEnd = workList[i + 1].y
+        while i < len(inputlist) - 1:
+            xStart = int(inputlist[i].x)
+            yStart = int(inputlist[i].y)
+            xEnd = int(inputlist[i + 1].x)
+            yEnd = int(inputlist[i + 1].y)
             img.drawBlueLines(xStart, yStart, xEnd, yEnd)
             i += 1
 
@@ -204,6 +205,7 @@ class CameraGridMaker:
     #===============================================================================
     def createCameraLookUpGrid(self):
         global CameraCoords
+        CameraCoords = []
 
         currentXPos = centerX
         seeRight = currentXPos
@@ -215,7 +217,7 @@ class CameraGridMaker:
             if(walkRight < maxX):
                 if(seeRight < maxX):
                     currentXPos += CamPixelX
-                elif(seeRight > maxX):
+                elif(seeRight >= maxX):
                     currentXPos += CamPixelX
                     break
             else:
@@ -233,7 +235,7 @@ class CameraGridMaker:
                     newCoord = Coordinate(currentXPos, centerY)
                     CameraCoords.append(newCoord)
                     currentXPos -= CamPixelX
-                elif(seeLeft < minX):
+                elif(seeLeft <= minX):
                     newCoord = Coordinate(currentXPos, centerY)
                     CameraCoords.append(newCoord)
                     currentXPos -= CamPixelX
@@ -268,7 +270,7 @@ class CameraGridMaker:
                         cacheList = reverserList
                         currentYPos = seeUp
                         switcher += 1
-                    elif(seeUp < minY):
+                    elif(seeUp <= minY):
                         for eachItem in CameraCoords:
                             newCoord = Coordinate(eachItem.x, seeUp)
                             reverserList.append(newCoord)
@@ -297,7 +299,7 @@ class CameraGridMaker:
                         cacheList = localList
                         currentYPos = seeUp
                         switcher += 1
-                    elif(seeUp < minY):
+                    elif(seeUp <= minY):
                         for eachItem in CameraCoords:
                             newCoord = Coordinate(eachItem.x, seeUp)
                             localList.append(newCoord)

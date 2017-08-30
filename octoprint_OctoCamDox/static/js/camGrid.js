@@ -98,7 +98,7 @@ function camGrid(width, height, centerX, centerY, currentSelectedLayer, GCodeCoo
     }
 
 		function _drawCamGrid(inputLayer) {
-			for (var i = 0 ; i < _cameraCoordinates.length ; ++i){
+			for (var i = 0 ; i < _cameraCoordinates[inputLayer].length ; ++i){
 				_drawTrayBox(_cameraCoordinates[inputLayer][i][0], _cameraCoordinates[inputLayer][i][1]);
 			}
 		}

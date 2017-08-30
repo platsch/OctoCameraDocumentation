@@ -80,8 +80,8 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         self.minY = 0.0
         self.centerY = 0.0
         self.centerX = 0.0
-        self.CamPixelX = 0
-        self.CamPixelY = 0
+        self.CamPixelX = 15
+        self.CamPixelY = 15
 
 
     def on_after_startup(self):
@@ -188,8 +188,6 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             newCamExtractor.extractCameraGCode(f)
 
             self.GCoordsList = newCamExtractor.getCoordList()
-            self.CamPixelX = 50
-            self.CamPixelY = 50
 
             self._createCameraGrid(
                 self.GCoordsList,
