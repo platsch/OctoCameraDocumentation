@@ -12,6 +12,7 @@ $(function() {
         self.stateString = ko.observable("No file loaded");
         self.cameraResolution = ko.observable("");
         self.debugvar = ko.observable("");
+        self.CamGridHeader = ko.observable("Camera lookup grid");
 
         self.layerDownEnabled = ko.observable(false);
         self.layerUpEnabled = ko.observable(false);
@@ -43,9 +44,14 @@ $(function() {
             _cameraGrid.drawCameragrid(selectedLayer);
         }
 
+        function _updateLayerHeader(){
+          self.CamGridHeader("Camera lookup grid on Layer: " + (selectedLayer + 1));
+        }
+
         self.incrementLayer = function() {
             selectedLayer += 1;
             _redrawObjects();
+            _updateLayerHeader();
 
             self.layerDownEnabled(selectedLayer > 0);
             self.layerUpEnabled(selectedLayer < gcodeCoords.length-1);
@@ -54,6 +60,7 @@ $(function() {
         self.decrementLayer = function() {
             selectedLayer -= 1;
             _redrawObjects();
+            _updateLayerHeader();
 
             self.layerDownEnabled(selectedLayer > 0);
             self.layerUpEnabled(selectedLayer < gcodeCoords.length-1);
@@ -73,20 +80,19 @@ $(function() {
               if(data.event == "FILE") {
                   if(data.data.hasOwnProperty("cameraCoordinates")) {
                       self.stateString("Succesfully created and loaded Camera Grid from GCode");
-                      //initialize the tray
-                        console.log("Start JSON fetching");
+                      //initialize the the data
                         BoxWidth = data.data.CamPixelResX;
                         BoxHeight = data.data.CamPixelResY;
                         centerX = data.data.centerPosX;
                         centerY = data.data.centerPosY;
-                        selectedLayer = data.data.currentselectedLayer;
                         gcodeCoords = JSON.parse(data.data.gcodeCoordinates);
                         camCoords = JSON.parse(data.data.cameraCoordinates);
-                        console.log("Fetching JSON Data complete");
                         _cameraGrid = new camGrid(BoxWidth,BoxHeight,centerX,centerY,selectedLayer,gcodeCoords,camCoords,_cameraGridCanvas);
 
                         // _cameraGrid.erase();
+                        selectedLayer = 0;
                         _redrawObjects();
+                        _updateLayerHeader();
 
                         if (selectedLayer == undefined) {
                             self.layerDownEnabled(false);

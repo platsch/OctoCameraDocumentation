@@ -73,7 +73,6 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         self._currentZ = None
         self.GCoordsList = []
         self.CameraGridCoordsList = []
-        self.currentLayer = 0
 
         self.maxX = 0.0
         self.maxY = 0.0
@@ -189,7 +188,6 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             newCamExtractor.extractCameraGCode(f)
 
             self.GCoordsList = newCamExtractor.getCoordList()
-            self.currentLayer = 1
             self.CamPixelX = 50
             self.CamPixelY = 50
 
@@ -395,7 +393,6 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
                     centerPosX = self.centerX,
                     CamPixelResX = self.CamPixelX,
                     CamPixelResY = self.CamPixelY,
-                    currentselectedLayer = self.currentLayer
                 )
         elif event == "OPERATION":
             data = dict(
