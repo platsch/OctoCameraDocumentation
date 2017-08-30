@@ -195,7 +195,6 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
 
             self._createCameraGrid(
                 self.GCoordsList,
-                self.currentLayer,
                 self.CamPixelX,
                 self.CamPixelY)
 
@@ -203,19 +202,25 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             self._updateUI("FILE", "")
 
 
-    def _createCameraGrid(self,inputList,onLayer,CamResX,CamResY):
+    def _createCameraGrid(self,inputList,CamResX,CamResY):
         Image = ImageOperations()
         Image.createBackgroundImage()
 
-        #Creates a new CameraGridMaker Object with int Numbers for the Cam resolution
-        newGridMaker = CameraGridMaker(inputList,onLayer,CamResX,CamResY)
+        templist = []
+        count = 0
+        while count < len(inputList):
+            #Creates a new CameraGridMaker Object with int Numbers for the Cam resolution
+            newGridMaker = CameraGridMaker(inputList,count,CamResX,CamResY)
 
-        #Execute all necessary operations to create the actual CameraGrid
-        newGridMaker.getCoordinates()
-        newGridMaker.createCameraLookUpGrid()
+            #Execute all necessary operations to create the actual CameraGrid
+            newGridMaker.getCoordinates()
+            newGridMaker.createCameraLookUpGrid()
+
+            templist.append(newGridMaker.getCameraCoords())
+            count += 1
 
         #Retrieve the necessary variables to be forwarded to the Octoprint Canvas
-        self.CameraGridCoordsList = newGridMaker.getCameraCoords()
+        self.CameraGridCoordsList = templist
         self.maxX = newGridMaker.getMaxX()
         self.maxY = newGridMaker.getMaxY()
         self.minX = newGridMaker.getMinX()
@@ -224,7 +229,6 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         self.centerX = newGridMaker.getCenterX()
         self.CamPixelX = newGridMaker.getCampixelX()
         self.CamPixelY = newGridMaker.getCampixelY()
-
 
     """
     Use the gcode hook to interrupt the printing job on custom M361 commands.

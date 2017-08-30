@@ -37,10 +37,15 @@ $(function() {
         //     _cameraGridCanvas.addEventListener("dblclick", self.onSmdTrayDblclick, false); //"click, dblclick"
         // };
 
-        self.incrementLayer = function() {
-            selectedLayer += 1;
+        function _redrawObjects(){
             _cameraGrid.erase();
             _cameraGrid.reDrawLayer(selectedLayer);
+            _cameraGrid.drawCameragrid(selectedLayer);
+        }
+
+        self.incrementLayer = function() {
+            selectedLayer += 1;
+            _redrawObjects();
 
             self.layerDownEnabled(selectedLayer > 0);
             self.layerUpEnabled(selectedLayer < gcodeCoords.length-1);
@@ -48,8 +53,7 @@ $(function() {
 
         self.decrementLayer = function() {
             selectedLayer -= 1;
-            _cameraGrid.erase();
-            _cameraGrid.reDrawLayer(selectedLayer);
+            _redrawObjects();
 
             self.layerDownEnabled(selectedLayer > 0);
             self.layerUpEnabled(selectedLayer < gcodeCoords.length-1);
@@ -82,8 +86,7 @@ $(function() {
                         _cameraGrid = new camGrid(BoxWidth,BoxHeight,centerX,centerY,selectedLayer,gcodeCoords,camCoords,_cameraGridCanvas);
 
                         // _cameraGrid.erase();
-                        _cameraGrid.drawPrintables();
-                        _cameraGrid.drawCameragrid(selectedLayer);
+                        _redrawObjects();
 
                         if (selectedLayer == undefined) {
                             self.layerDownEnabled(false);

@@ -14,12 +14,12 @@ from GCode_processor import Coordinate
 #Stores the coordinates as tuples of x and y. Implementation in class Coordinate
 workList = []
 
+#Stores the List of found centers for the Camera Run
+CameraCoords = []
+
 #Conversion from millimeters to pixel
 # MillimeterToPixel = 3.779527559
 MillimeterToPixel = 1
-
-#Stores the List of found centers for the Camera Run
-CameraCoords = []
 
 #Stores the maximum Pixel size the camera provies. Its in Pixel x Pixel Format
 CamPixelX = 0
