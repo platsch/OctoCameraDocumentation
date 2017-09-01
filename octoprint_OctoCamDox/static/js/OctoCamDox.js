@@ -40,8 +40,13 @@ $(function() {
 
         function _redrawObjects(){
             _cameraGrid.erase();
-            _cameraGrid.reDrawLayer(selectedLayer);
+            _cameraGrid.drawGCodeLines(selectedLayer);
             _cameraGrid.drawCameragrid(selectedLayer);
+            _cameraGrid.drawCenterCircle();
+        }
+
+        function _centerObjects(){
+          _cameraGrid.arrangeObjects();
         }
 
         function _updateLayerHeader(){
@@ -91,6 +96,7 @@ $(function() {
                         _cameraGrid = new camGrid(BoxWidth,BoxHeight,centerX,centerY,selectedLayer,gcodeCoords,camCoords,_cameraGridCanvas);
 
                         // _cameraGrid.erase();
+                        _centerObjects();
                         _redrawObjects();
                         _updateLayerHeader();
 

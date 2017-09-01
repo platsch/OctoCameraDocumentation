@@ -22,7 +22,7 @@ function camGrid(width, height, centerX, centerY, currentSelectedLayer, GCodeCoo
 			_drawGCodeLines (_currentSelectedLayer);
 		}
 
-		self.reDrawLayer = function(inputLayer) {
+		self.drawGCodeLines = function(inputLayer) {
 			_drawGCodeLines (inputLayer);
 		}
 
@@ -30,15 +30,30 @@ function camGrid(width, height, centerX, centerY, currentSelectedLayer, GCodeCoo
 			_drawCamGrid(inputLayer);
 		}
 
+		self.drawCenterCircle = function(){
+			_drawCenterCircle();
+		}
+
+		self.arrangeObjects = function() {
+			_zoomDrawnObjects();
+		}
+
 	function _drawGCodeLines (inputLayer) {
 		var ctx = _trayCanvas.getContext("2d");
 		if (_trayCanvas && _trayCanvas.getContext) {
 				for (var i = 0 ; i < _GCodeCoordinates[inputLayer].length-1 ; ++i){
+					ctx.save();
+					var x = ctx.canvas.width/2;
+					var y = ctx.canvas.height/2;
+					ctx.translate(-centerX, -centerY);
+					ctx.translate(x, y);
+
 					ctx.strokeStyle = "black";
 					ctx.beginPath();
 					ctx.moveTo(_GCodeCoordinates[inputLayer][i][0], _GCodeCoordinates[inputLayer][i][1]);
 					ctx.lineTo(_GCodeCoordinates[inputLayer][i+1][0], _GCodeCoordinates[inputLayer][i+1][1]);
 					ctx.stroke();
+					ctx.restore();
 			}
 		}
 	}
@@ -76,7 +91,7 @@ function camGrid(width, height, centerX, centerY, currentSelectedLayer, GCodeCoo
 
 				for(var x=0; x<_width; x++) {
                     for(var y=0; y<_height; y++) {
-                        _drawTrayBox(x+1, y+1, canvasBoxSize);
+                        _drawGridBox(x+1, y+1, canvasBoxSize);
                     }
                 }
             }
@@ -84,22 +99,29 @@ function camGrid(width, height, centerX, centerY, currentSelectedLayer, GCodeCoo
 	}
 
     // draw a single tray box
-    function _drawTrayBox(x, y) {
+    function _drawGridBox(x, y) {
         if (_trayCanvas && _trayCanvas.getContext) {
             var ctx = _trayCanvas.getContext("2d");
             if (ctx) {
+								ctx.save();
+								var posx = ctx.canvas.width/2;
+								var posy = ctx.canvas.height/2;
+								ctx.translate(-centerX, -centerY);
+								ctx.translate(posx, posy);
+
                 ctx.lineWidth = 1;
                 ctx.strokeStyle = "green";
                 // ctx.fillStyle = "white";
                 ctx.strokeRect (x-(_width/2),y-(_height/2),_width,_height);
                 // ctx.fillRect (width*size+ctx.lineWidth,(_height-1)*size-height*size+ctx.lineWidth,size-ctx.lineWidth,size-ctx.lineWidth);
+								ctx.restore();
             }
         }
     }
 
 		function _drawCamGrid(inputLayer) {
 			for (var i = 0 ; i < _cameraCoordinates[inputLayer].length ; ++i){
-				_drawTrayBox(_cameraCoordinates[inputLayer][i][0], _cameraCoordinates[inputLayer][i][1]);
+				_drawGridBox(_cameraCoordinates[inputLayer][i][0], _cameraCoordinates[inputLayer][i][1]);
 			}
 		}
 
@@ -116,4 +138,47 @@ function camGrid(width, height, centerX, centerY, currentSelectedLayer, GCodeCoo
         }
         return Math.floor(boxSize);
     }
+
+		function _centerDrawnObjects(){
+			if (_trayCanvas && _trayCanvas.getContext) {
+					var ctx = _trayCanvas.getContext("2d");
+					// Move object into center of Canvas
+					var x = ctx.canvas.width/2;
+					var y = ctx.canvas.height/2;
+
+					ctx.translate(-centerX, -centerY);
+					ctx.translate(x, y);
+			}
+		}
+
+		function _zoomDrawnObjects(){
+			if (_trayCanvas && _trayCanvas.getContext) {
+					var ctx = _trayCanvas.getContext("2d");
+
+					var x = ctx.canvas.width/2;
+					var y = ctx.canvas.height/2;
+
+					// TODO: Zoomfactor should be calculated dynamically
+					// Zoom object
+					ctx.translate(x, y);
+					var factor = 5.0;
+					ctx.scale(factor,factor);
+					ctx.translate(-x, -y);
+				}
+		}
+
+		function _drawCenterCircle(){
+			if (_trayCanvas && _trayCanvas.getContext) {
+					var ctx = _trayCanvas.getContext("2d");
+
+					var x = ctx.canvas.width/2;
+					var y = ctx.canvas.height/2;
+
+					ctx.beginPath();
+					ctx.fillStyle = "black";
+					ctx.arc(0,0,3,0,(Math.PI*2),true);
+					ctx.fill();
+					// ctx.stroke();
+				}
+		}
 }
