@@ -1,14 +1,14 @@
-function camGrid(width, height, centerX, centerY, maximumX, maximumY, minimumX, minimumY, currentSelectedLayer, GCodeCoordinates, cameraCoordinates, canvas){
+function camGrid(width, height, infoList, currentSelectedLayer, GCodeCoordinates, cameraCoordinates, canvas){
 		var self = this;
 
-		var _width = width;
-    var _height= height;
-		var _centerX = centerX;
-		var _centerY = centerY;
-		var _minX = minimumX;
-		var _minY = minimumY;
-		var _maxX = maximumX;
-		var _maxY = maximumY;
+		var _camBoxWidth = width;
+    var _camBoxHeight= height;
+		var _centerX = infoList[currentSelectedLayer][4];
+		var _centerY = infoList[currentSelectedLayer][5];
+		var _minX = infoList[currentSelectedLayer][1];
+		var _minY = infoList[currentSelectedLayer][3];
+		var _maxX = infoList[currentSelectedLayer][0];
+		var _maxY = infoList[currentSelectedLayer][2];
 		var _currentSelectedLayer = currentSelectedLayer;
 		var _GCodeCoordinates = GCodeCoordinates;
 		var _cameraCoordinates = cameraCoordinates;
@@ -21,7 +21,7 @@ function camGrid(width, height, centerX, centerY, maximumX, maximumY, minimumX, 
 
 		self.drawPrintables = function() {
 			// console.log("Draw Printables entered")
-			// console.log("Resolution of the Cam box is width: " + _width + " height was: " + _height)
+			// console.log("Resolution of the Cam box is width: " + _camBoxWidth + " height was: " + _camBoxHeight)
 			// console.log("First GCode coordinate X: " + _GCodeCoordinates[0][0][0] + " Y: " + _GCodeCoordinates[0][0][0])
 			_drawGCodeLines (_currentSelectedLayer);
 		}
@@ -49,7 +49,7 @@ function camGrid(width, height, centerX, centerY, maximumX, maximumY, minimumX, 
 					ctx.save();
 					var x = ctx.canvas.width/2;
 					var y = ctx.canvas.height/2;
-					ctx.translate(-centerX, -centerY);
+					ctx.translate(-_centerX, -_centerY);
 					ctx.translate(x, y);
 
 					ctx.strokeStyle = "black";
@@ -93,8 +93,8 @@ function camGrid(width, height, centerX, centerY, maximumX, maximumY, minimumX, 
                 ctx.fillRect(0,0,size_x,size_y);
                 ctx.strokeRect (0,0,size_x,size_y);
 
-				for(var x=0; x<_width; x++) {
-                    for(var y=0; y<_height; y++) {
+				for(var x=0; x<_camBoxWidth; x++) {
+                    for(var y=0; y<_camBoxHeight; y++) {
                         _drawGridBox(x+1, y+1, canvasBoxSize);
                     }
                 }
@@ -102,7 +102,7 @@ function camGrid(width, height, centerX, centerY, maximumX, maximumY, minimumX, 
         }
 	}
 
-    // draw a single tray box
+    // draw a single grid box
     function _drawGridBox(x, y) {
         if (_trayCanvas && _trayCanvas.getContext) {
             var ctx = _trayCanvas.getContext("2d");
@@ -110,14 +110,14 @@ function camGrid(width, height, centerX, centerY, maximumX, maximumY, minimumX, 
 								ctx.save();
 								var posx = ctx.canvas.width/2;
 								var posy = ctx.canvas.height/2;
-								ctx.translate(-centerX, -centerY);
+								ctx.translate(-_centerX, -_centerY);
 								ctx.translate(posx, posy);
 
                 ctx.lineWidth = 1;
                 ctx.strokeStyle = "green";
                 // ctx.fillStyle = "white";
-                ctx.strokeRect (x-(_width/2),y-(_height/2),_width,_height);
-                // ctx.fillRect (width*size+ctx.lineWidth,(_height-1)*size-height*size+ctx.lineWidth,size-ctx.lineWidth,size-ctx.lineWidth);
+                ctx.strokeRect (x-(_camBoxWidth/2),y-(_camBoxHeight/2),_camBoxWidth,_camBoxHeight);
+                // ctx.fillRect (width*size+ctx.lineWidth,(_camBoxHeight-1)*size-height*size+ctx.lineWidth,size-ctx.lineWidth,size-ctx.lineWidth);
 								ctx.restore();
             }
         }
@@ -137,7 +137,7 @@ function camGrid(width, height, centerX, centerY, maximumX, maximumY, minimumX, 
             if (ctx) {
                 var size_x = ctx.canvas.width;
                 var size_y = ctx.canvas.height;
-                boxSize = Math.min((size_x-4)/_width, (size_y-4)/_height);
+                boxSize = Math.min((size_x-4)/_camBoxWidth, (size_y-4)/_camBoxHeight);
             }
         }
         return Math.floor(boxSize);
@@ -169,7 +169,7 @@ function camGrid(width, height, centerX, centerY, maximumX, maximumY, minimumX, 
 					// Make the necessary transformations for the zoom
 					var width = _maxX - _minX;
 					var length = _maxY - _minY;
-					var scaleF = width > length ? (x - _width) / width : (y - _height) / length;
+					var scaleF = width > length ? (x - _camBoxWidth) / width : (y - _camBoxHeight) / length;
 					var factor = scaleF;
 					ctx.scale(factor,factor);
 

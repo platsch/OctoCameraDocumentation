@@ -89,15 +89,10 @@ $(function() {
                         selectedLayer = 0;
                         BoxWidth = data.data.CamPixelResX;
                         BoxHeight = data.data.CamPixelResY;
-                        centerX = data.data.centerPosX;
-                        centerY = data.data.centerPosY;
-                        maximumX = data.data.maximumX,
-                        maximumY = data.data.maximumY,
-                        minimumX = data.data.minimumX,
-                        minimumY = data.data.minimumY,
+                        infoList = JSON.parse(data.data.gridInfoList);
                         gcodeCoords = JSON.parse(data.data.gcodeCoordinates);
                         camCoords = JSON.parse(data.data.cameraCoordinates);
-                        _cameraGrid = new camGrid(BoxWidth,BoxHeight,centerX,centerY,maximumX,maximumY,minimumX,minimumY,selectedLayer,gcodeCoords,camCoords,_cameraGridCanvas);
+                        _cameraGrid = new camGrid(BoxWidth,BoxHeight,infoList,selectedLayer,gcodeCoords,camCoords,_cameraGridCanvas);
 
                         // _cameraGrid.erase();
                         _centerObjects();

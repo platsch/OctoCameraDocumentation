@@ -73,13 +73,8 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         self._currentZ = None
         self.GCoordsList = []
         self.CameraGridCoordsList = []
+        self.GridInfoList = []
 
-        self.maxX = 0.0
-        self.maxY = 0.0
-        self.minX = 0.0
-        self.minY = 0.0
-        self.centerY = 0.0
-        self.centerX = 0.0
         self.CamPixelX = 15
         self.CamPixelY = 15
 
@@ -203,6 +198,7 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         Image.createBackgroundImage()
 
         templist = []
+        infoList = []
         count = 0
         while count < len(inputList):
             #Creates a new CameraGridMaker Object with int Numbers for the Cam resolution
@@ -212,19 +208,19 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             newGridMaker.getCoordinates()
             newGridMaker.createCameraLookUpGrid()
 
+            infoList.append([newGridMaker.getMaxX(),
+                    newGridMaker.getMinX(),
+                    newGridMaker.getMaxY(),
+                    newGridMaker.getMinY(),
+                    newGridMaker.getCenterX(),
+                    newGridMaker.getCenterY()])
             templist.append(newGridMaker.getCameraCoords())
             count += 1
 
         #Retrieve the necessary variables to be forwarded to the Octoprint Canvas
         self.CameraGridCoordsList = templist
-        self.maxX = newGridMaker.getMaxX()
-        self.maxY = newGridMaker.getMaxY()
-        self.minX = newGridMaker.getMinX()
-        self.minY = newGridMaker.getMinX()
-        self.centerY = newGridMaker.getCenterY()
-        self.centerX = newGridMaker.getCenterX()
-        self.CamPixelX = newGridMaker.getCampixelX()
-        self.CamPixelY = newGridMaker.getCampixelY()
+        self.GridInfoList = infoList
+
 
     """
     Use the gcode hook to interrupt the printing job on custom M361 commands.
@@ -383,12 +379,7 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
                 data = dict(
                     gcodeCoordinates = json.dumps(self.GCoordsList,cls=CoordJSONify),
                     cameraCoordinates = json.dumps(self.CameraGridCoordsList,cls=CoordJSONify),
-                    maximumX = self.maxX,
-                    maximumY = self.maxY,
-                    minimumX = self.minX,
-                    minimumY = self.minY,
-                    centerPosY = self.centerY,
-                    centerPosX = self.centerX,
+                    gridInfoList = json.dumps(self.GridInfoList,cls=CoordJSONify),
                     CamPixelResX = self.CamPixelX,
                     CamPixelResY = self.CamPixelY,
                 )

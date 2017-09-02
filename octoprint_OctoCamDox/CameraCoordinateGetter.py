@@ -14,12 +14,12 @@ from GCode_processor import Coordinate
 #Stores the coordinates as tuples of x and y. Implementation in class Coordinate
 workList = []
 
-#Stores the List of found centers for the Camera Run
-CameraCoords = []
-
 #Conversion from millimeters to pixel
 # MillimeterToPixel = 3.779527559
 MillimeterToPixel = 1.0
+
+#Stores the List of found centers for the Camera Run
+CameraCoords = []
 
 #Stores the maximum Pixel size the camera provies. Its in Pixel x Pixel Format
 CamPixelX = 0
@@ -54,11 +54,11 @@ class ImageOperations:
     def drawCenterCircle(self,x,y):
         cv2.circle(self.img,(x,y),1,(0,0,255),-1)
 
-    def drawExtremaBounds(self):
-        self.drawCenterCircle(int(minX), int(minY))
-        self.drawCenterCircle(int(minX), int(maxY))
-        self.drawCenterCircle(int(maxX), int(minY))
-        self.drawCenterCircle(int(maxX), int(maxY))
+    def drawExtremaBounds(self,inputlist):
+        self.drawCenterCircle(int(inputlist[0]), int(inputlist[2]))
+        self.drawCenterCircle(int(inputlist[1]), int(inputlist[2]))
+        self.drawCenterCircle(int(inputlist[0]), int(inputlist[3]))
+        self.drawCenterCircle(int(inputlist[1]), int(inputlist[3]))
 
     def drawBoxFromCenter(self, xStart , yStart):
         cv2.circle(self.img,(xStart,yStart),1,(0,255,255),-1)
@@ -86,8 +86,20 @@ class CameraGridMaker:
     def __init__(self,incomingCoordList,layer,CamResX,CamResY):
         global CamPixelX
         global CamPixelY
+        global minX
+        global minY
+        global maxX
+        global maxY
+        global centerX
+        global centerY
+        centerX = None
+        centerY = None
         CamPixelX = CamResX
         CamPixelY = CamResY
+        minX = None
+        minY = None
+        maxX = None
+        maxY = None
         self.CordList = incomingCoordList[layer]
 
     #Creates the work list we're using for our computations
@@ -115,19 +127,19 @@ class CameraGridMaker:
             i += 1
 
     #Draws the path the Camera will take
-    def drawCameraLines(self,img):
+    def drawCameraLines(self,inputlist,img):
         i = 0
-        while i < len(CameraCoords) - 1:
-            xStart = int(CameraCoords[i].x)
-            yStart = int(CameraCoords[i].y)
-            xEnd = int(CameraCoords[i + 1].x)
-            yEnd = int(CameraCoords[i + 1].y)
+        while i < len(inputlist) - 1:
+            xStart = int(inputlist[i].x)
+            yStart = int(inputlist[i].y)
+            xEnd = int(inputlist[i + 1].x)
+            yEnd = int(inputlist[i + 1].y)
             img.drawCameraLines(xStart, yStart, xEnd, yEnd)
             i += 1
 
     #Draws the found Camerasectorboxes on the Screen
-    def drawAllFoundCameraPositions(self,img):
-        for eachItem in CameraCoords:
+    def drawAllFoundCameraPositions(self,inputList,img):
+        for eachItem in inputList:
             print(eachItem.x,eachItem.y)
             img.drawBoxFromCenter(int(eachItem.x), int(eachItem.y))
 
@@ -137,6 +149,7 @@ class CameraGridMaker:
         global minY
         global maxX
         global maxY
+
         #Initialize with some base values other than zero
         if (minX == None):
             minX = NewX
