@@ -1,10 +1,14 @@
-function camGrid(width, height, centerX, centerY, currentSelectedLayer, GCodeCoordinates, cameraCoordinates, canvas){
+function camGrid(width, height, centerX, centerY, maximumX, maximumY, minimumX, minimumY, currentSelectedLayer, GCodeCoordinates, cameraCoordinates, canvas){
 		var self = this;
 
 		var _width = width;
     var _height= height;
 		var _centerX = centerX;
 		var _centerY = centerY;
+		var _minX = minimumX;
+		var _minY = minimumY;
+		var _maxX = maximumX;
+		var _maxY = maximumY;
 		var _currentSelectedLayer = currentSelectedLayer;
 		var _GCodeCoordinates = GCodeCoordinates;
 		var _cameraCoordinates = cameraCoordinates;
@@ -161,8 +165,14 @@ function camGrid(width, height, centerX, centerY, currentSelectedLayer, GCodeCoo
 					// TODO: Zoomfactor should be calculated dynamically
 					// Zoom object
 					ctx.translate(x, y);
-					var factor = 5.0;
+
+					// Make the necessary transformations for the zoom
+					var width = _maxX - _minX;
+					var length = _maxY - _minY;
+					var scaleF = width > length ? (x - _width) / width : (y - _height) / length;
+					var factor = scaleF;
 					ctx.scale(factor,factor);
+
 					ctx.translate(-x, -y);
 				}
 		}
