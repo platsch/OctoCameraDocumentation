@@ -42,7 +42,7 @@ $(function() {
             _cameraGrid.erase();
             _cameraGrid.drawGCodeLines(selectedLayer);
             _cameraGrid.drawCameragrid(selectedLayer);
-            _cameraGrid.drawCenterCircle();
+            _cameraGrid.drawCameraPathLines(selectedLayer);
         }
 
         function _centerObjects(){
