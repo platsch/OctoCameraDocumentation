@@ -3,13 +3,13 @@ function camGrid(width, height, infoList, currentSelectedLayer, GCodeCoordinates
 
 		var _camBoxWidth = width;
     var _camBoxHeight= height;
-		var _centerX = infoList[currentSelectedLayer][4];
-		var _centerY = infoList[currentSelectedLayer][5];
-		var _minX = infoList[currentSelectedLayer][1];
-		var _minY = infoList[currentSelectedLayer][3];
-		var _maxX = infoList[currentSelectedLayer][0];
-		var _maxY = infoList[currentSelectedLayer][2];
 		var _currentSelectedLayer = currentSelectedLayer;
+		var _centerX = infoList[_currentSelectedLayer][4];
+		var _centerY = infoList[_currentSelectedLayer][5];
+		var _minX = infoList[_currentSelectedLayer][1];
+		var _minY = infoList[_currentSelectedLayer][3];
+		var _maxX = infoList[_currentSelectedLayer][0];
+		var _maxY = infoList[_currentSelectedLayer][2];
 		var _GCodeCoordinates = GCodeCoordinates;
 		var _cameraCoordinates = cameraCoordinates;
 		var _trayCanvas = canvas;
@@ -24,27 +24,36 @@ function camGrid(width, height, infoList, currentSelectedLayer, GCodeCoordinates
 			// console.log("Draw Printables entered")
 			// console.log("Resolution of the Cam box is width: " + _camBoxWidth + " height was: " + _camBoxHeight)
 			// console.log("First GCode coordinate X: " + _GCodeCoordinates[0][0][0] + " Y: " + _GCodeCoordinates[0][0][0])
-			_drawLinesOnCanvas(_GCodeCoordinates,inputLayer,0.25,"black");
+			_drawLinesOnCanvas(_GCodeCoordinates,_currentSelectedLayer,0.25,"black");
 		}
 
-		self.drawGCodeLines = function(inputLayer) {
-			_drawLinesOnCanvas(_GCodeCoordinates,inputLayer,0.25,"black");
+		self.drawGCodeLines = function() {
+			_drawLinesOnCanvas(_GCodeCoordinates,_currentSelectedLayer,0.25,"black");
+			// Draw a circle in the centerX
+			_drawCircle(_centerX,_centerY,1,"rgb(255,255,0)");
 		}
 
-		self.drawCameraPathLines = function(inputLayer){
-			_drawLinesOnCanvas(_cameraCoordinates,inputLayer,0.5,"rgb(255,0,0)");
+		self.drawCameraPathLines = function(){
+			_drawLinesOnCanvas(_cameraCoordinates,_currentSelectedLayer,0.5,"rgb(255,0,0)");
 		}
 
-		self.drawCameragrid = function(inputLayer) {
-			_drawCamGrid(inputLayer);
-		}
-
-		self.drawCenterCircle = function(){
-			_drawCenterCircle();
+		self.drawCameragrid = function() {
+			_drawCamGrid(_currentSelectedLayer);
 		}
 
 		self.arrangeObjects = function() {
 			_zoomDrawnObjects();
+		}
+
+		self.setCurrentLayer = function(inputLayer) {
+			_currentSelectedLayer = inputLayer;
+			// Now update all values dependant on it
+			_centerX = infoList[_currentSelectedLayer][4];
+			_centerY = infoList[_currentSelectedLayer][5];
+			_minX = infoList[_currentSelectedLayer][1];
+			_minY = infoList[_currentSelectedLayer][3];
+			_maxX = infoList[_currentSelectedLayer][0];
+			_maxY = infoList[_currentSelectedLayer][2];
 		}
 
 	function _drawLinesOnCanvas(inputList,inputLayer,linewidth,color) {
@@ -187,11 +196,18 @@ function camGrid(width, height, infoList, currentSelectedLayer, GCodeCoordinates
 			if (_trayCanvas && _trayCanvas.getContext) {
 					var ctx = _trayCanvas.getContext("2d");
 
+					ctx.save();
+					var x = ctx.canvas.width/2;
+					var y = ctx.canvas.height/2;
+					ctx.translate(-_centerX, -_centerY);
+					ctx.translate(x, y);
+
 					ctx.beginPath();
 					ctx.fillStyle = color;
 					ctx.arc(posX,posY,radius,0,(Math.PI*2),true);
 					ctx.fill();
 					// ctx.stroke();
+					ctx.restore();
 				}
 		}
 

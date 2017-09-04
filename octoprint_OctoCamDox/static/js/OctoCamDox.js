@@ -40,9 +40,9 @@ $(function() {
 
         function _redrawObjects(){
             _cameraGrid.erase();
-            _cameraGrid.drawGCodeLines(selectedLayer);
-            _cameraGrid.drawCameragrid(selectedLayer);
-            _cameraGrid.drawCameraPathLines(selectedLayer);
+            _cameraGrid.drawGCodeLines();
+            _cameraGrid.drawCameragrid();
+            _cameraGrid.drawCameraPathLines();
         }
 
         function _centerObjects(){
@@ -55,6 +55,8 @@ $(function() {
 
         self.incrementLayer = function() {
             selectedLayer += 1;
+            // Update selected Layer in cameragrid thenredraw everything
+            _cameraGrid.setCurrentLayer(selectedLayer);
             _redrawObjects();
             _updateLayerHeader();
 
@@ -64,6 +66,8 @@ $(function() {
 
         self.decrementLayer = function() {
             selectedLayer -= 1;
+            // Update selected Layer in cameragrid thenredraw everything
+            _cameraGrid.setCurrentLayer(selectedLayer);
             _redrawObjects();
             _updateLayerHeader();
 
@@ -95,6 +99,7 @@ $(function() {
                         _cameraGrid = new camGrid(BoxWidth,BoxHeight,infoList,selectedLayer,gcodeCoords,camCoords,_cameraGridCanvas);
 
                         // _cameraGrid.erase();
+                        _cameraGrid.setCurrentLayer(selectedLayer);
                         _centerObjects();
                         _redrawObjects();
                         _updateLayerHeader();
