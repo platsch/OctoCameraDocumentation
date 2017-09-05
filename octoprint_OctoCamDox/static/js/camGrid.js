@@ -33,6 +33,10 @@ function camGrid(width, height, infoList, currentSelectedLayer, GCodeCoordinates
 			_drawCircle(_centerX,_centerY,1,"rgb(255,255,0)");
 		}
 
+		self.drawAllGridCenters = function () {
+			_drawAllGridCenters(_cameraCoordinates,_currentSelectedLayer);
+		}
+
 		self.drawCameraPathLines = function(){
 			_drawLinesOnCanvas(_cameraCoordinates,_currentSelectedLayer,0.5,"rgb(255,0,0)");
 		}
@@ -190,6 +194,19 @@ function camGrid(width, height, infoList, currentSelectedLayer, GCodeCoordinates
 
 					ctx.translate(-x, -y);
 				}
+		}
+
+		function _drawAllGridCenters(inputList,inputLayer) {
+			var ctx = _trayCanvas.getContext("2d");
+			if (_trayCanvas && _trayCanvas.getContext) {
+					// Draw start circle
+					_drawCircle(inputList[inputLayer][0][0], inputList[inputLayer][0][1],2,"rgb(0,255,0)");
+					for (var i = 1 ; i < inputList[inputLayer].length-1 ; ++i){
+						_drawCircle(inputList[inputLayer][i][0], inputList[inputLayer][i][1],1,"rgb(255,170,0)");
+				}
+					_drawCircle(inputList[inputLayer][inputList[inputLayer].length-1][0],
+					inputList[inputLayer][inputList[inputLayer].length-1][1],2,"rgb(255,0,0)");
+			}
 		}
 
 		function _drawCircle(posX,posY,radius,color){

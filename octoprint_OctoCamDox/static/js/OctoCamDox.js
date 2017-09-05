@@ -43,6 +43,7 @@ $(function() {
             _cameraGrid.drawGCodeLines();
             _cameraGrid.drawCameragrid();
             _cameraGrid.drawCameraPathLines();
+            _cameraGrid.drawAllGridCenters();
         }
 
         function _centerObjects(){
