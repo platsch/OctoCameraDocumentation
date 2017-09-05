@@ -74,6 +74,7 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         self.GCoordsList = []
         self.CameraGridCoordsList = []
         self.GridInfoList = []
+        self.currentLayer = 0
 
         self.CamPixelX = 15
         self.CamPixelY = 15
@@ -223,42 +224,16 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
 
 
     """
-    Use the gcode hook to interrupt the printing job on custom M361 commands.
+    Use the gcode hook to interrupt the printing job on custom C420 commands.
     """
     def hook_gcode_queuing(self, comm_instance, phase, cmd, cmd_type, gcode, *args, **kwargs):
-        if "M361" in cmd:
-            if self._state == self.STATE_NONE:
-                self._state = self.STATE_PICK
-                if self._printer.get_current_data()["currentZ"]:
-                    self._currentZ = float(self._printer.get_current_data()["currentZ"])
-                else:
-                    self._currentZ = 0.0
-                command = re.search("P\d*", cmd).group() #strip the M361
-                self._currentPart = int(command[1:])
+        if "M942" in cmd:
+            self._logger.info( "Qeued command to start the Camera documentation" )
 
-                self._logger.info( "Received M361 command to place part: " + str(self._currentPart))
+            for eachItem in self.CameraGridCoordsList[0]:
+                self._logger.info( "Move camera to position X: %d Y: %d", eachItem.x, eachItem.y)
 
-                self._updateUI("OPERATION", "pick")
-
-
-                self._logger.info( "Move camera to part: " + str(self._currentPart))
-                self._moveCameraToPart(self._currentPart)
-
-                self._printer.commands("M400")
-                self._printer.commands("G4 P1")
-                self._printer.commands("M400")
-
-                for i in range(5):
-                    self._printer.commands("G4 P1")
-
-                self._printer.commands("M362")
-
-                for i in range(5):
-                    self._printer.commands("G4 P1")
-
-                return "G4 P1" # return dummy command
-            else:
-                self._logger.info( "ERROR, received M361 command while placing part: " + str(self._currentPart))
+            return "G4 P1" # return dummy command
 
     """
     This hook is designed as some kind of a "state machine". The reason is,
@@ -273,68 +248,25 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
     """
 
     def hook_gcode_sending(self, comm_instance, phase, cmd, cmd_type, gcode, *args, **kwargs):
-        if "M362" in cmd:
-            if self._state == self.STATE_PICK:
-                self._state = self.STATE_ALIGN
-                self._logger.info("Pick part " + str(self._currentPart))
+        if "M943" in cmd:
+            self._logger.info("Start camera documentation process")
 
-                for i in range(3):
-                    self._printer.commands("G4 P50")
+            for i in range(3):
+                self._printer.commands("G4 P50")
 
-                self._pickPart(self._currentPart)
-                self._printer.commands("M400")
+            self._printer.commands("M400")
+            self._printer.commands("G4 P1")
+            self._printer.commands("M400")
+
+            for i in range(5):
                 self._printer.commands("G4 P1")
-                self._printer.commands("M400")
 
-                for i in range(5):
-                    self._printer.commands("G4 P1")
+            self._printer.commands("M362")
 
-                self._printer.commands("M362")
-
-                for i in range(5):
-                    self._printer.commands("G4 P1")
-
-                return "G4 P1" # return dummy command
-
-            if self._state == self.STATE_ALIGN:
-                self._state = self.STATE_PLACE
-                self._logger.info("Align part " + str(self._currentPart))
-
-                for i in range(3):
-                    self._printer.commands("G4 P10")
-
-                self._alignPart(self._currentPart)
-                self._printer.commands("M400")
+            for i in range(5):
                 self._printer.commands("G4 P1")
-                self._printer.commands("M400")
 
-                for i in range(10):
-                    self._printer.commands("G4 P1")
-
-                self._printer.commands("M362")
-
-                for i in range(5):
-                    self._printer.commands("G4 P1")
-
-                return "G4 P1" # return dummy command
-
-            if self._state == self.STATE_PLACE:
-                self._logger.info("Place part " + str(self._currentPart))
-
-                for i in range(3):
-                    self._printer.commands("G4 P10")
-
-                self._placePart(self._currentPart)
-                self._printer.commands("M400")
-                self._printer.commands("G4 P1")
-                self._printer.commands("M400")
-
-                for i in range(10):
-                    self._printer.commands("G4 P1")
-
-                self._logger.info("Finished placing part " + str(self._currentPart))
-                self._state = self.STATE_NONE
-                return "G4 P1" # return dummy command
+            return "G4 P1" # return dummy command
 
     def _openGCodeFiles(self, inputName):
         gcode = open( inputName, 'r' )
