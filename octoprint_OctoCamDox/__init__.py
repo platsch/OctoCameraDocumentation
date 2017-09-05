@@ -224,15 +224,29 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
 
 
     """
-    Use the gcode hook to interrupt the printing job on custom C420 commands.
+    Use the gcode hook to start the camera grid documentation processes.
     """
     def hook_gcode_queuing(self, comm_instance, phase, cmd, cmd_type, gcode, *args, **kwargs):
         if "M942" in cmd:
             self._logger.info( "Qeued command to start the Camera documentation" )
 
-            for eachItem in self.CameraGridCoordsList[0]:
-                self._logger.info( "Move camera to position X: %d Y: %d", eachItem.x, eachItem.y)
+            # Get current Z Position
+            if self._printer.get_current_data()["currentZ"]:
+                self._currentZ = float(self._printer.get_current_data()["currentZ"])
+            else:
+                self._currentZ = 0.0
 
+            # switch to pimary extruder, since the head camera is relative to this extruder and the offset to PNP nozzle might not be known (firmware offset)
+            self._printer.commands("T0")
+            self._printer.commands("G1 Z" + str(self._currentZ+5) + " F" + str(self.FEEDRATE)) # lift printhead
+
+            for eachItem in self.CameraGridCoordsList[0]:
+                # move camera to grid position
+                self._logger.info( "Move camera to position X: %d Y: %d", eachItem.x, eachItem.y)
+                cmd = "G1 X" + str(eachItem.x) + " Y" + str(eachItem.y) + " F" + str(self.FEEDRATE)
+                self._printer.commands(cmd)
+
+            self._printer.commands("G1 Z" + str(self._currentZ-5) + " F" + str(self.FEEDRATE)) # lower printhead
             return "G4 P1" # return dummy command
 
     """
@@ -291,6 +305,16 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             self._logger.info("Script path: " + grabScript)
             result = False
         return result
+
+    def _moveCameraToCamGrid(self ,Xpos ,Ypos):
+        # switch to pimary extruder, since the head camera is relative to this extruder and the offset to PNP nozzle might not be known (firmware offset)
+        self._printer.commands("T0")
+        # move camera to part position
+        cmd = "G1 X" + str(Xpos) + " Y" + str(Ypos) + " F" + str(self.FEEDRATE)
+        self._logger.info("Move camera to: " + cmd)
+        self._printer.commands("G1 Z" + str(self._currentZ+5) + " F" + str(self.FEEDRATE)) # lift printhead
+        self._printer.commands(cmd)
+        self._printer.commands("G1 Z" + str(camera_offset[2]) + " F" + str(self.FEEDRATE)) # lower printhead
 
     def _saveDebugImage(self, path):
         name, ext = os.path.splitext(os.path.basename(path))
