@@ -242,7 +242,7 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
 
             for eachItem in self.CameraGridCoordsList[0]:
                 # move camera to grid position
-                self._logger.info( "Move camera to position X: %d Y: %d", eachItem.x, eachItem.y)
+                self._logger.info( "Move camera to position X: %s Y: %s", str(eachItem.x), str(eachItem.y))
                 cmd = "G1 X" + str(eachItem.x) + " Y" + str(eachItem.y) + " F" + str(self.FEEDRATE)
                 self._printer.commands(cmd)
 

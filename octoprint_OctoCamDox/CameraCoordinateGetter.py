@@ -109,8 +109,8 @@ class CameraGridMaker:
         workList = []
         for eachEntry in self.CordList:
             Coord = Coordinate(
-                int(eachEntry.x*MillimeterToPixel),
-                int(eachEntry.y*MillimeterToPixel))
+                eachEntry.x*MillimeterToPixel,
+                eachEntry.y*MillimeterToPixel)
             self.findXYExtremas(Coord.x, Coord.y)
             self.computeCenterOfExtremes()
             workList.append(Coord)
