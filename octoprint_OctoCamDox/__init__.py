@@ -88,6 +88,11 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
     #     #used for communication to UI
         self._pluginManager = octoprint.plugin.plugin_manager()
 
+	helpers = self._pluginManager.get_helpers("OctoPNP", "get_camera_image")
+        if helpers and "get_camera_image" in helpers:
+            self._logger.info("FOUND HELPER!!!")
+            self.get_camera_image = helpers["get_camera_image"]
+
 
     def get_settings_defaults(self):
         return {
@@ -249,6 +254,9 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             self._printer.commands("G1 Z" + str(self._currentZ-5) + " F" + str(self.FEEDRATE)) # lower printhead
             return "G4 P1" # return dummy command
 
+	if "M945" in cmd:
+	    self.get_camera_image(100, 80, self.get_camera_image_callback)
+
     """
     This hook is designed as some kind of a "state machine". The reason is,
     that we have to circumvent the buffered gcode execution in the printer.
@@ -281,6 +289,11 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
                 self._printer.commands("G4 P1")
 
             return "G4 P1" # return dummy command
+
+
+    def get_camera_image_callback(self, path):
+	print "returned path: "
+	print path
 
     def _openGCodeFiles(self, inputName):
         gcode = open( inputName, 'r' )
