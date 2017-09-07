@@ -88,10 +88,14 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
     #     #used for communication to UI
         self._pluginManager = octoprint.plugin.plugin_manager()
 
-	helpers = self._pluginManager.get_helpers("OctoPNP", "get_camera_image")
-        if helpers and "get_camera_image" in helpers:
-            self._logger.info("FOUND HELPER!!!")
-            self.get_camera_image = helpers["get_camera_image"]
+    # Add helpers from the auxilary OctoPNP plug-in to grab images and camera resolution
+	helpers = self._pluginManager.get_helpers("OctoPNP", "get_head_camera_image", "get_head_camera_pxPerMM")
+        if helpers and "get_head_camera_image" in helpers:
+            self._logger.info("FOUND HELPER FOR TAKING IMAGE!!!")
+            self.get_camera_image = helpers["get_head_camera_image"]
+        if helpers and "get_head_camera_pxPerMM" in helpers:
+            self._logger.info("FOUND HELPER FOR CAMERARESOLUTION!!!")
+            self.get_camera_resolution = helpers["get_head_camera_pxPerMM"]
 
 
     def get_settings_defaults(self):
@@ -236,13 +240,16 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             self._printer.commands("G1 Z" + str(self._currentZ-5) + " F" + str(self.FEEDRATE)) # lower printhead
             return "G4 P1" # return dummy command
 
-	if "M945" in cmd:
-	    self.get_camera_image(100, 80, self.get_camera_image_callback)
+        if "M944" in cmd:
+    	    print(self.get_camera_resolution("HEAD"))
+
+    	if "M945" in cmd:
+    	    self.get_camera_image(100, 80, self.get_camera_image_callback, False)
 
 
     def get_camera_image_callback(self, path):
-	print "returned path: "
-	print path
+    	print "returned path: "
+    	print path
 
     def _openGCodeFiles(self, inputName):
         gcode = open( inputName, 'r' )
