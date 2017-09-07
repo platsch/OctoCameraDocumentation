@@ -68,16 +68,16 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
 
 
     def __init__(self):
-        self._state = self.STATE_NONE
-        self._currentPart = 0
         self._currentZ = None
         self.GCoordsList = []
         self.CameraGridCoordsList = []
         self.GridInfoList = []
         self.currentLayer = 0
 
-        self.CamPixelX = 15
-        self.CamPixelY = 15
+        self.cameraImagePath = None
+
+        self.CamPixelX = None
+        self.CamPixelY = None
 
 
     def on_after_startup(self):
@@ -166,8 +166,6 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             #Retrieve the basefolder for the GCode uploads
             uploadsPath = self._settings.global_get_basefolder("uploads") + "\\" + payload.get("path")
 
-            self._currentPart = None
-            xml = "";
             f = self._openGCodeFiles(uploadsPath)
             #f = open(testPath, 'r')
 
@@ -175,6 +173,9 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             newCamExtractor.extractCameraGCode(f)
 
             self.GCoordsList = newCamExtractor.getCoordList()
+
+            #Get the values for the Camera grid box sizes
+            self._getAndSetGridResolution()
 
             self._createCameraGrid(
                 self.GCoordsList,
@@ -248,8 +249,9 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
 
 
     def get_camera_image_callback(self, path):
-    	print "returned path: "
+    	print "returned image path: "
     	print path
+        self.cameraImagePath = path
 
     def _openGCodeFiles(self, inputName):
         gcode = open( inputName, 'r' )
@@ -266,6 +268,65 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         self._printer.commands("G1 Z" + str(self._currentZ+5) + " F" + str(self.FEEDRATE)) # lift printhead
         self._printer.commands(cmd)
         self._printer.commands("G1 Z" + str(camera_offset[2]) + " F" + str(self.FEEDRATE)) # lower printhead
+
+    """This function sets up the necessary values for the camera lookup gridStep
+    it tries to get legit values first and elsely uses hardcode default values"""
+    def _getAndSetGridResolution(self):
+        # use the helper to retriever the Pixel per Millimeter ratio
+        PixelPerMillimeter = self.get_camera_resolution("HEAD")
+        # TODO: Remove hardcoded position and just get a random picture
+        # Use the Camera helper from OctoPNP to grab an actual Image from the HEAD camera
+        self.get_camera_image(0, 0, self.get_camera_image_callback, True)
+        # Perform actions when there was a proper picture found
+        if(self.cameraImagePath):
+            self._logger.info("The found camera path was: ",self.cameraImagePath)
+            imagePath = self.get_camera_image_callback
+            width, height = self._get_image_size(imagePath)
+            # Divide the resolution by the PixelPerMillimeter ratio
+            self.CamPixelX = width / PixelPerMillimeter
+            self.CamPixelY = height / PixelPerMillimeter
+        # If no data could be retrieved use default values
+        else:
+            self._logger.info("No proper image found, using default values")
+            self.CamPixelX = 15
+            self.CamPixelY = 15
+
+
+    """This function prints the resolution of the .png, .gif or .jpeg image file passed into it.
+    This function was copypasted from https://stackoverflow.com/questions/8032642/how-to-obtain-image-size-using-standard-python-class-without-using-external-lib
+    :param fname: Contains the filename of the file """
+    def _get_image_size(self, fname):
+        with open(fname, 'rb') as fhandle:
+            head = fhandle.read(24)
+            if len(head) != 24:
+                return
+            if imghdr.what(fname) == 'png':
+                check = struct.unpack('>i', head[4:8])[0]
+                if check != 0x0d0a1a0a:
+                    return
+                width, height = struct.unpack('>ii', head[16:24])
+            elif imghdr.what(fname) == 'gif':
+                width, height = struct.unpack('<HH', head[6:10])
+            elif imghdr.what(fname) == 'jpeg':
+                try:
+                    fhandle.seek(0) # Read 0xff next
+                    size = 2
+                    ftype = 0
+                    while not 0xc0 <= ftype <= 0xcf:
+                        fhandle.seek(size, 1)
+                        byte = fhandle.read(1)
+                        while ord(byte) == 0xff:
+                            byte = fhandle.read(1)
+                        ftype = ord(byte)
+                        size = struct.unpack('>H', fhandle.read(2))[0] - 2
+                    # We are at a SOFn block
+                    fhandle.seek(1, 1)  # Skip `precision' byte.
+                    height, width = struct.unpack('>HH', fhandle.read(4))
+                except Exception: #IGNORE:W0703
+                    return
+            else:
+                return
+            return width, height
 
     def _updateUI(self, event, parameter):
         data = dict(
