@@ -48,7 +48,7 @@ def __plugin_load__():
     __plugin_implementation__ = octocamdox
 
     global __plugin_hooks__
-    __plugin_hooks__ = {'octoprint.comm.protocol.gcode.sending': octocamdox.hook_gcode_sending, 'octoprint.comm.protocol.gcode.queuing': octocamdox.hook_gcode_queuing}
+    __plugin_hooks__ = {'octoprint.comm.protocol.gcode.queuing': octocamdox.hook_gcode_queuing}
 
 
 class OctoCamDox(octoprint.plugin.StartupPlugin,
@@ -153,24 +153,6 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
                 "js/settings.js"]
         )
 
-    # Flask endpoint for the GUI to request camera images. Possible request parameters are "BED" and "HEAD".
-    @octoprint.plugin.BlueprintPlugin.route("/camera_image", methods=["GET"])
-    def getCameraImage(self):
-        result = ""
-        if "imagetype" in flask.request.values:
-            camera = flask.request.values["imagetype"]
-            if ((camera == "HEAD") or (camera == "BED")):
-                if self._grabImages(camera):
-                    imagePath = self._settings.get(["camera", camera.lower(), "path"])
-                    try:
-                        f = open(imagePath,"r")
-                        result = flask.jsonify(src="data:image/" + os.path.splitext(imagePath)[1] + ";base64,"+base64.b64encode(bytes(f.read())))
-                    except IOError:
-                        result = flask.jsonify(error="Unable to open Image after fetching. Image path: " + imagePath)
-                else:
-                    result = flask.jsonify(error="Unable to fetch image. Check octoprint log for details.")
-        return flask.make_response(result, 200)
-
     # Use the on_event hook to extract XML data every time a new file has been loaded by the user
     def on_event(self, event, payload):
         #extraxt part informations from inline xmly
@@ -257,39 +239,6 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
 	if "M945" in cmd:
 	    self.get_camera_image(100, 80, self.get_camera_image_callback)
 
-    """
-    This hook is designed as some kind of a "state machine". The reason is,
-    that we have to circumvent the buffered gcode execution in the printer.
-    To take a picture, the buffer must be emptied to ensure that the printer has executed all previous moves
-    and is now at the desired position. To achieve this, a M400 command is injected after the
-    camera positioning command, followed by a M362. This causes the printer to send the
-    next acknowledging ok not until the positioning is finished. Since the next command is a M362,
-    octoprint will call the gcode hook again and we are back in the game, iterating to the next state.
-    Since both, Octoprint and the printer firmware are using a queue, we inject some "G4 P1" commands
-    as a "clearance buffer". Those commands simply cause the printer to wait for a millisecond.
-    """
-
-    def hook_gcode_sending(self, comm_instance, phase, cmd, cmd_type, gcode, *args, **kwargs):
-        if "M943" in cmd:
-            self._logger.info("Start camera documentation process")
-
-            for i in range(3):
-                self._printer.commands("G4 P50")
-
-            self._printer.commands("M400")
-            self._printer.commands("G4 P1")
-            self._printer.commands("M400")
-
-            for i in range(5):
-                self._printer.commands("G4 P1")
-
-            self._printer.commands("M362")
-
-            for i in range(5):
-                self._printer.commands("G4 P1")
-
-            return "G4 P1" # return dummy command
-
 
     def get_camera_image_callback(self, path):
 	print "returned path: "
@@ -301,24 +250,6 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         gcode.close()
         return readData
 
-    def _grabImages(self, camera):
-        result = True
-        grabScript = "";
-        if(camera == "HEAD"):
-            grabScript = self._settings.get(["camera", "head", "grabScriptPath"])
-        if(camera == "BED"):
-            grabScript = self._settings.get(["camera", "bed", "grabScriptPath"])
-        #os.path.dirname(os.path.realpath(__file__)) + "/cameras/grab.sh"
-        try:
-            if call([grabScript]) != 0:
-                self._logger.info("ERROR: " + camera + " camera not ready!")
-                result = False
-        except:
-            self._logger.info("ERROR: Unable to execute " + camera + " camera grab script!")
-            self._logger.info("Script path: " + grabScript)
-            result = False
-        return result
-
     def _moveCameraToCamGrid(self ,Xpos ,Ypos):
         # switch to pimary extruder, since the head camera is relative to this extruder and the offset to PNP nozzle might not be known (firmware offset)
         self._printer.commands("T0")
@@ -328,15 +259,6 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         self._printer.commands("G1 Z" + str(self._currentZ+5) + " F" + str(self.FEEDRATE)) # lift printhead
         self._printer.commands(cmd)
         self._printer.commands("G1 Z" + str(camera_offset[2]) + " F" + str(self.FEEDRATE)) # lower printhead
-
-    def _saveDebugImage(self, path):
-        name, ext = os.path.splitext(os.path.basename(path))
-        timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H:%M:%S')
-        filename = "/" + name + "_" + timestamp + ext
-        dest_path = os.path.dirname(path) + filename
-        shutil.copy(path, dest_path)
-        self._logger.info("saved %s image to %s", name, dest_path)
-
 
     def _updateUI(self, event, parameter):
         data = dict(
@@ -352,21 +274,7 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
                     CamPixelResX = self.CamPixelX,
                     CamPixelResY = self.CamPixelY,
                 )
-        elif event == "OPERATION":
-            data = dict(
-                type = parameter,
-                part = self._currentPart
-            )
-        elif event == "ERROR":
-            data = dict(
-                type = parameter,
-            )
-            if self._currentPart: data["part"] = self._currentPart
-        elif event == "INFO":
-            data = dict(
-                type = parameter,
-            )
-        elif event is "HEADIMAGE" or event is "BEDIMAGE":
+        elif event is "HEADIMAGE":
             # open image and convert to base64
             f = open(parameter,"r")
             data = dict(
