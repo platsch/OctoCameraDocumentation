@@ -59,11 +59,6 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             octoprint.plugin.SimpleApiPlugin,
             octoprint.plugin.BlueprintPlugin):
 
-    STATE_NONE = 0
-    STATE_PICK = 1
-    STATE_ALIGN = 2
-    STATE_PLACE = 3
-
     FEEDRATE = 4000.000
 
 
