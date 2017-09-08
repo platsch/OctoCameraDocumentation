@@ -34,7 +34,7 @@ import json
 
 from .GCode_processor import CameraGCodeExtraction as GCodex
 from .GCode_processor import CustomJSONEncoder as CoordJSONify
-from .CameraCoordinateGetter import CameraGridMaker,ImageOperations
+from .CameraCoordinateGetter import CameraGridMaker
 
 
 __plugin_name__ = "OctoCamDox"
@@ -187,9 +187,6 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
 
 
     def _createCameraGrid(self,inputList,CamResX,CamResY):
-        Image = ImageOperations()
-        Image.createBackgroundImage()
-
         templist = []
         infoList = []
         count = 0
