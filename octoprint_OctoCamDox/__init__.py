@@ -233,9 +233,6 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             self._printer.commands("G1 Z" + str(self._currentZ-5) + " F" + str(self.FEEDRATE)) # lower printhead
             return "G4 P1" # return dummy command
 
-        if "M944" in cmd:
-    	    print(self.get_camera_resolution("HEAD"))
-
     	if "M945" in cmd:
     	    self.get_camera_image(100, 80, self.get_camera_image_callback, False)
 
@@ -261,17 +258,17 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         self._printer.commands(cmd)
         self._printer.commands("G1 Z" + str(camera_offset[2]) + " F" + str(self.FEEDRATE)) # lower printhead
 
-    """This function sets up the necessary values for the camera lookup gridStep
-    it tries to get legit values first and elsely uses hardcode default values"""
+    """This function sets up the necessary values for the camera lookup grid steps,
+    it tries to get legit values first and elsely uses hardcoded default values"""
     def _getAndSetGridResolution(self):
-        # use the helper to retriever the Pixel per Millimeter ratio
+        # use the helper to retrieve the Pixel per Millimeter ratio
         PixelPerMillimeter = self.get_camera_resolution("HEAD")
         # TODO: Remove hardcoded position and just get a random picture
         # Use the Camera helper from OctoPNP to grab an actual Image from the HEAD camera
         self.get_camera_image(0, 0, self.get_camera_image_callback, True)
         # Perform actions when there was a proper picture found
         if(self.cameraImagePath):
-            self._logger.info("The found camera path was: ",self.cameraImagePath)
+            self._logger.info("The found image path was: ",self.cameraImagePath)
             imagePath = self.get_camera_image_callback
             width, height = self._get_image_size(imagePath)
             # Divide the resolution by the PixelPerMillimeter ratio
@@ -284,7 +281,7 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             self.CamPixelY = 15
 
 
-    """This function prints the resolution of the .png, .gif or .jpeg image file passed into it.
+    """This function retrieves the resolution of the .png, .gif or .jpeg image file passed into it.
     This function was copypasted from https://stackoverflow.com/questions/8032642/how-to-obtain-image-size-using-standard-python-class-without-using-external-lib
     :param fname: Contains the filename of the file """
     def _get_image_size(self, fname):

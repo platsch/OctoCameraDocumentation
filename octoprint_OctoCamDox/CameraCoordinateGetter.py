@@ -143,13 +143,18 @@ class CameraGridMaker:
     #===============================================================================
     # Main Camera Grid computation Algortihm
     #===============================================================================
+    def _setUpCoordinates(self, CameraCoords, newCoord, inputList, seeUp):
+        for eachItem in CameraCoords:
+            newCoord = Coordinate(eachItem.x, seeUp)
+            inputList.append(newCoord)
+
     def createCameraLookUpGrid(self):
         self.CameraCoords = []
 
         currentXPos = self.centerX
         seeRight = currentXPos
         walkRight = currentXPos
-        #Walk all the way right first until self.maxX bound is reached
+        #Walk all the way right first until maxX bound is reached
         while(True):
             seeRight = (currentXPos + self.CamPixelX)
             walkRight = (currentXPos + self.CamPixelX / 2)
@@ -200,9 +205,8 @@ class CameraGridMaker:
                 walkUp = (currentYPos - self.CamPixelY / 2)
                 if(walkUp > self.minY):
                     if(seeUp > self.minY):
-                        for eachItem in self.CameraCoords:
-                            newCoord = Coordinate(eachItem.x, seeUp)
-                            reverserList.append(newCoord)
+                        self._setUpCoordinates(
+                            self.CameraCoords, newCoord, reverserList, seeUp)
 
                         reverserList.reverse()
                         reverserList.extend(cacheList)
@@ -210,9 +214,8 @@ class CameraGridMaker:
                         currentYPos = seeUp
                         switcher += 1
                     elif(seeUp <= self.minY):
-                        for eachItem in self.CameraCoords:
-                            newCoord = Coordinate(eachItem.x, seeUp)
-                            reverserList.append(newCoord)
+                        self._setUpCoordinates(
+                            self.CameraCoords, newCoord, reverserList, seeUp)
 
                         reverserList.reverse()
                         reverserList.extend(cacheList)
@@ -230,18 +233,16 @@ class CameraGridMaker:
                 walkUp = (currentYPos - self.CamPixelY / 2)
                 if(walkUp > self.minY):
                     if(seeUp > self.minY):
-                        for eachItem in self.CameraCoords:
-                            newCoord = Coordinate(eachItem.x, seeUp)
-                            localList.append(newCoord)
+                        self._setUpCoordinates(
+                            self.CameraCoords, newCoord, localList, seeUp)
 
                         localList.extend(cacheList)
                         cacheList = localList
                         currentYPos = seeUp
                         switcher += 1
                     elif(seeUp <= self.minY):
-                        for eachItem in self.CameraCoords:
-                            newCoord = Coordinate(eachItem.x, seeUp)
-                            localList.append(newCoord)
+                        self._setUpCoordinates(
+                            self.CameraCoords, newCoord, localList, seeUp)
 
                         localList.extend(cacheList)
                         cacheList = localList
