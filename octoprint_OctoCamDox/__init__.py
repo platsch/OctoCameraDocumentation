@@ -34,7 +34,7 @@ import json
 
 from .GCode_processor import CameraGCodeExtraction as GCodex
 from .GCode_processor import CustomJSONEncoder as CoordJSONify
-from .CameraCoordinateGetter import CameraGridMaker,ImageOperations
+from .CameraCoordinateGetter import CameraGridMaker
 
 
 __plugin_name__ = "OctoCamDox"
@@ -48,7 +48,7 @@ def __plugin_load__():
     __plugin_implementation__ = octocamdox
 
     global __plugin_hooks__
-    __plugin_hooks__ = {'octoprint.comm.protocol.gcode.sending': octocamdox.hook_gcode_sending, 'octoprint.comm.protocol.gcode.queuing': octocamdox.hook_gcode_queuing}
+    __plugin_hooks__ = {'octoprint.comm.protocol.gcode.queuing': octocamdox.hook_gcode_queuing}
 
 
 class OctoCamDox(octoprint.plugin.StartupPlugin,
@@ -59,25 +59,20 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             octoprint.plugin.SimpleApiPlugin,
             octoprint.plugin.BlueprintPlugin):
 
-    STATE_NONE = 0
-    STATE_PICK = 1
-    STATE_ALIGN = 2
-    STATE_PLACE = 3
-
     FEEDRATE = 4000.000
 
 
     def __init__(self):
-        self._state = self.STATE_NONE
-        self._currentPart = 0
         self._currentZ = None
         self.GCoordsList = []
         self.CameraGridCoordsList = []
         self.GridInfoList = []
         self.currentLayer = 0
 
-        self.CamPixelX = 15
-        self.CamPixelY = 15
+        self.cameraImagePath = None
+
+        self.CamPixelX = None
+        self.CamPixelY = None
 
 
     def on_after_startup(self):
@@ -87,6 +82,15 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
     #         int(self._settings.get(["camera", "head", "binary_thresh"])))
     #     #used for communication to UI
         self._pluginManager = octoprint.plugin.plugin_manager()
+
+    # Add helpers from the auxilary OctoPNP plug-in to grab images and camera resolution
+	helpers = self._pluginManager.get_helpers("OctoPNP", "get_head_camera_image", "get_head_camera_pxPerMM")
+        if helpers and "get_head_camera_image" in helpers:
+            self._logger.info("FOUND HELPER FOR TAKING IMAGE!!!")
+            self.get_camera_image = helpers["get_head_camera_image"]
+        if helpers and "get_head_camera_pxPerMM" in helpers:
+            self._logger.info("FOUND HELPER FOR CAMERARESOLUTION!!!")
+            self.get_camera_resolution = helpers["get_head_camera_pxPerMM"]
 
 
     def get_settings_defaults(self):
@@ -148,24 +152,6 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
                 "js/settings.js"]
         )
 
-    # Flask endpoint for the GUI to request camera images. Possible request parameters are "BED" and "HEAD".
-    @octoprint.plugin.BlueprintPlugin.route("/camera_image", methods=["GET"])
-    def getCameraImage(self):
-        result = ""
-        if "imagetype" in flask.request.values:
-            camera = flask.request.values["imagetype"]
-            if ((camera == "HEAD") or (camera == "BED")):
-                if self._grabImages(camera):
-                    imagePath = self._settings.get(["camera", camera.lower(), "path"])
-                    try:
-                        f = open(imagePath,"r")
-                        result = flask.jsonify(src="data:image/" + os.path.splitext(imagePath)[1] + ";base64,"+base64.b64encode(bytes(f.read())))
-                    except IOError:
-                        result = flask.jsonify(error="Unable to open Image after fetching. Image path: " + imagePath)
-                else:
-                    result = flask.jsonify(error="Unable to fetch image. Check octoprint log for details.")
-        return flask.make_response(result, 200)
-
     # Use the on_event hook to extract XML data every time a new file has been loaded by the user
     def on_event(self, event, payload):
         #extraxt part informations from inline xmly
@@ -175,8 +161,6 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             #Retrieve the basefolder for the GCode uploads
             uploadsPath = self._settings.global_get_basefolder("uploads") + "\\" + payload.get("path")
 
-            self._currentPart = None
-            xml = "";
             f = self._openGCodeFiles(uploadsPath)
             #f = open(testPath, 'r')
 
@@ -184,6 +168,9 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             newCamExtractor.extractCameraGCode(f)
 
             self.GCoordsList = newCamExtractor.getCoordList()
+
+            #Get the values for the Camera grid box sizes
+            self._getAndSetGridResolution()
 
             self._createCameraGrid(
                 self.GCoordsList,
@@ -195,9 +182,6 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
 
 
     def _createCameraGrid(self,inputList,CamResX,CamResY):
-        Image = ImageOperations()
-        Image.createBackgroundImage()
-
         templist = []
         infoList = []
         count = 0
@@ -249,62 +233,20 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             self._printer.commands("G1 Z" + str(self._currentZ-5) + " F" + str(self.FEEDRATE)) # lower printhead
             return "G4 P1" # return dummy command
 
-    """
-    This hook is designed as some kind of a "state machine". The reason is,
-    that we have to circumvent the buffered gcode execution in the printer.
-    To take a picture, the buffer must be emptied to ensure that the printer has executed all previous moves
-    and is now at the desired position. To achieve this, a M400 command is injected after the
-    camera positioning command, followed by a M362. This causes the printer to send the
-    next acknowledging ok not until the positioning is finished. Since the next command is a M362,
-    octoprint will call the gcode hook again and we are back in the game, iterating to the next state.
-    Since both, Octoprint and the printer firmware are using a queue, we inject some "G4 P1" commands
-    as a "clearance buffer". Those commands simply cause the printer to wait for a millisecond.
-    """
+    	if "M945" in cmd:
+    	    self.get_camera_image(100, 80, self.get_camera_image_callback, False)
 
-    def hook_gcode_sending(self, comm_instance, phase, cmd, cmd_type, gcode, *args, **kwargs):
-        if "M943" in cmd:
-            self._logger.info("Start camera documentation process")
 
-            for i in range(3):
-                self._printer.commands("G4 P50")
-
-            self._printer.commands("M400")
-            self._printer.commands("G4 P1")
-            self._printer.commands("M400")
-
-            for i in range(5):
-                self._printer.commands("G4 P1")
-
-            self._printer.commands("M362")
-
-            for i in range(5):
-                self._printer.commands("G4 P1")
-
-            return "G4 P1" # return dummy command
+    def get_camera_image_callback(self, path):
+    	print "returned image path: "
+    	print path
+        self.cameraImagePath = path
 
     def _openGCodeFiles(self, inputName):
         gcode = open( inputName, 'r' )
         readData = gcode.readlines()
         gcode.close()
         return readData
-
-    def _grabImages(self, camera):
-        result = True
-        grabScript = "";
-        if(camera == "HEAD"):
-            grabScript = self._settings.get(["camera", "head", "grabScriptPath"])
-        if(camera == "BED"):
-            grabScript = self._settings.get(["camera", "bed", "grabScriptPath"])
-        #os.path.dirname(os.path.realpath(__file__)) + "/cameras/grab.sh"
-        try:
-            if call([grabScript]) != 0:
-                self._logger.info("ERROR: " + camera + " camera not ready!")
-                result = False
-        except:
-            self._logger.info("ERROR: Unable to execute " + camera + " camera grab script!")
-            self._logger.info("Script path: " + grabScript)
-            result = False
-        return result
 
     def _moveCameraToCamGrid(self ,Xpos ,Ypos):
         # switch to pimary extruder, since the head camera is relative to this extruder and the offset to PNP nozzle might not be known (firmware offset)
@@ -316,14 +258,64 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         self._printer.commands(cmd)
         self._printer.commands("G1 Z" + str(camera_offset[2]) + " F" + str(self.FEEDRATE)) # lower printhead
 
-    def _saveDebugImage(self, path):
-        name, ext = os.path.splitext(os.path.basename(path))
-        timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H:%M:%S')
-        filename = "/" + name + "_" + timestamp + ext
-        dest_path = os.path.dirname(path) + filename
-        shutil.copy(path, dest_path)
-        self._logger.info("saved %s image to %s", name, dest_path)
+    """This function sets up the necessary values for the camera lookup grid steps,
+    it tries to get legit values first and elsely uses hardcoded default values"""
+    def _getAndSetGridResolution(self):
+        # use the helper to retrieve the Pixel per Millimeter ratio
+        PixelPerMillimeter = self.get_camera_resolution("HEAD")
+        # TODO: Remove hardcoded position and just get a random picture
+        # Use the Camera helper from OctoPNP to grab an actual Image from the HEAD camera
+        self.get_camera_image(0, 0, self.get_camera_image_callback, True)
+        # Perform actions when there was a proper picture found
+        if(self.cameraImagePath):
+            self._logger.info("The found image path was: ",self.cameraImagePath)
+            imagePath = self.get_camera_image_callback
+            width, height = self._get_image_size(imagePath)
+            # Divide the resolution by the PixelPerMillimeter ratio
+            self.CamPixelX = width / PixelPerMillimeter
+            self.CamPixelY = height / PixelPerMillimeter
+        # If no data could be retrieved use default values
+        else:
+            self._logger.info("No proper image found, using default values")
+            self.CamPixelX = 15
+            self.CamPixelY = 15
 
+
+    """This function retrieves the resolution of the .png, .gif or .jpeg image file passed into it.
+    This function was copypasted from https://stackoverflow.com/questions/8032642/how-to-obtain-image-size-using-standard-python-class-without-using-external-lib
+    :param fname: Contains the filename of the file """
+    def _get_image_size(self, fname):
+        with open(fname, 'rb') as fhandle:
+            head = fhandle.read(24)
+            if len(head) != 24:
+                return
+            if imghdr.what(fname) == 'png':
+                check = struct.unpack('>i', head[4:8])[0]
+                if check != 0x0d0a1a0a:
+                    return
+                width, height = struct.unpack('>ii', head[16:24])
+            elif imghdr.what(fname) == 'gif':
+                width, height = struct.unpack('<HH', head[6:10])
+            elif imghdr.what(fname) == 'jpeg':
+                try:
+                    fhandle.seek(0) # Read 0xff next
+                    size = 2
+                    ftype = 0
+                    while not 0xc0 <= ftype <= 0xcf:
+                        fhandle.seek(size, 1)
+                        byte = fhandle.read(1)
+                        while ord(byte) == 0xff:
+                            byte = fhandle.read(1)
+                        ftype = ord(byte)
+                        size = struct.unpack('>H', fhandle.read(2))[0] - 2
+                    # We are at a SOFn block
+                    fhandle.seek(1, 1)  # Skip `precision' byte.
+                    height, width = struct.unpack('>HH', fhandle.read(4))
+                except Exception: #IGNORE:W0703
+                    return
+            else:
+                return
+            return width, height
 
     def _updateUI(self, event, parameter):
         data = dict(
@@ -339,21 +331,7 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
                     CamPixelResX = self.CamPixelX,
                     CamPixelResY = self.CamPixelY,
                 )
-        elif event == "OPERATION":
-            data = dict(
-                type = parameter,
-                part = self._currentPart
-            )
-        elif event == "ERROR":
-            data = dict(
-                type = parameter,
-            )
-            if self._currentPart: data["part"] = self._currentPart
-        elif event == "INFO":
-            data = dict(
-                type = parameter,
-            )
-        elif event is "HEADIMAGE" or event is "BEDIMAGE":
+        elif event is "HEADIMAGE":
             # open image and convert to base64
             f = open(parameter,"r")
             data = dict(

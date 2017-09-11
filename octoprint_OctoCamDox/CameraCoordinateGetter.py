@@ -4,76 +4,7 @@ Created on 18.07.2017
 @author: Dennis Struhs
 '''
 
-import cv2
-import numpy as np
 from GCode_processor import Coordinate
-
-#===============================================================================
-# Global variables
-#===============================================================================
-#Stores the coordinates as tuples of x and y. Implementation in class Coordinate
-workList = []
-
-#Conversion from millimeters to pixel
-# MillimeterToPixel = 3.779527559
-MillimeterToPixel = 1.0
-
-#Stores the List of found centers for the Camera Run
-CameraCoords = []
-
-#Stores the maximum Pixel size the camera provies. Its in Pixel x Pixel Format
-CamPixelX = 0
-CamPixelY = 0
-
-#Below values store the extreme values found during the processing process
-minX = None
-minY = None
-maxX = None
-maxY = None
-centerX = None
-centerY = None
-
-#===============================================================================
-# Help Classes
-#===============================================================================
-
-class ImageOperations:
-
-    def createBackgroundImage(self):
-        self.img = np.zeros((512,512,3),np.uint8)
-
-    def drawBlueLines(self, xStart , yStart, xEnd, yEnd):
-        cv2.line(self.img,(xStart,yStart),(xEnd, yEnd),(255,0,0),1)
-
-    def drawCameraLines(self, xStart , yStart, xEnd, yEnd):
-        cv2.line(self.img,(xStart,yStart),(xEnd, yEnd),(0,160,255),1)
-
-    def drawGridBox(self, xStart , yStart, xEnd, yEnd):
-        cv2.rectangle(self.img,(xStart, yStart),(xEnd, yEnd),(0,255,0),0)
-
-    def drawCenterCircle(self,x,y):
-        cv2.circle(self.img,(x,y),1,(0,0,255),-1)
-
-    def drawExtremaBounds(self,inputlist):
-        self.drawCenterCircle(int(inputlist[0]), int(inputlist[2]))
-        self.drawCenterCircle(int(inputlist[1]), int(inputlist[2]))
-        self.drawCenterCircle(int(inputlist[0]), int(inputlist[3]))
-        self.drawCenterCircle(int(inputlist[1]), int(inputlist[3]))
-
-    def drawBoxFromCenter(self, xStart , yStart):
-        cv2.circle(self.img,(xStart,yStart),1,(0,255,255),-1)
-        cv2.rectangle(self.img,(xStart - int(CamPixelX / 2), yStart - int(CamPixelY / 2)),(xStart + int(CamPixelX / 2), yStart + int(CamPixelY / 2)),(0,255,0),0)
-
-    def resizeImage(self,fx,fy):
-        self.img = cv2.resize(self.img,(fx, fy),interpolation = cv2.INTER_AREA)
-
-    def showImage(self,windowName):
-        cv2.imshow(windowName,self.img)
-        if cv2.waitKey(0) & 0xff == 27:
-            cv2.destroyAllWindows()
-
-    def saveImage(self,name):
-        cv2.imwrite(name + '.jpg',self.img)
 
 #===============================================================================
 # Help Functions
@@ -83,37 +14,40 @@ class CameraGridMaker:
     #Stores the incoming List of coordinates
     CordList = []
 
+    #Stores the coordinates as tuples of x and y. Implementation in class Coordinate
+    workList = []
+
+    #Stores the List of found centers for the Camera Run
+    CameraCoords = []
+
+    #Stores the maximum Pixel size the camera provies. Its in Pixel x Pixel Format
+    CamPixelX = None
+    CamPixelY = None
+
+    #Below values store the extreme values found during the processing process
+    minX = None
+    minY = None
+    maxX = None
+    maxY = None
+    centerX = None
+    centerY = None
+
     def __init__(self,incomingCoordList,layer,CamResX,CamResY):
-        global CamPixelX
-        global CamPixelY
-        global minX
-        global minY
-        global maxX
-        global maxY
-        global centerX
-        global centerY
-        centerX = None
-        centerY = None
-        CamPixelX = CamResX
-        CamPixelY = CamResY
-        minX = None
-        minY = None
-        maxX = None
-        maxY = None
+        self.CamPixelX = CamResX
+        self.CamPixelY = CamResY
         self.CordList = incomingCoordList[layer]
 
     #Creates the work list we're using for our computations
     #and sets up the Bounding Box values
     def getCoordinates(self):
-        global workList
-        workList = []
+        self.workList = []
         for eachEntry in self.CordList:
             Coord = Coordinate(
-                eachEntry.x*MillimeterToPixel,
-                eachEntry.y*MillimeterToPixel)
+                eachEntry.x,
+                eachEntry.y)
             self.findXYExtremas(Coord.x, Coord.y)
             self.computeCenterOfExtremes()
-            workList.append(Coord)
+            self.workList.append(Coord)
 
     #Draws the printed Object
     def drawGCodeLines(self,inputlist,img):
@@ -145,27 +79,22 @@ class CameraGridMaker:
 
     #Find the Extrema for the Bounding Box
     def findXYExtremas(self,NewX,NewY):
-        global minX
-        global minY
-        global maxX
-        global maxY
-
         #Initialize with some base values other than zero
-        if (minX == None):
-            minX = NewX
-            maxX = NewX
-            minY = NewY
-            maxY = NewY
+        if (self.minX == None):
+            self.minX = NewX
+            self.maxX = NewX
+            self.minY = NewY
+            self.maxY = NewY
         else:
-            if(NewX < minX):
-                minX = NewX
-            elif(NewX > maxX):
-                maxX = NewX
+            if(NewX < self.minX):
+                self.minX = NewX
+            elif(NewX > self.maxX):
+                self.maxX = NewX
 
-            if(NewY < minY):
-                minY = NewY
-            elif(NewY > maxY):
-                maxY = NewY
+            if(NewY < self.minY):
+                self.minY = NewY
+            elif(NewY > self.maxY):
+                self.maxY = NewY
 
     def findYMinMaxInList(self,inputList,mode):
         result = None
@@ -193,21 +122,19 @@ class CameraGridMaker:
 
     #Compute the Center of the printed Object
     def computeCenterOfExtremes(self):
-        global centerX
-        global centerY
-        centerX = (maxX+minX) / 2
-        centerY = (maxY+minY) / 2
+        self.centerX = (self.maxX+self.minX) / 2
+        self.centerY = (self.maxY+self.minY) / 2
 
     #Makes a points symmetrical copy of the upper Camerasectorgrid
     def makePointSymmetry(self,inputList):
         symmetryList = []
         for eachItem in inputList:
-            distX = centerX - eachItem.x
-            distY = centerY - eachItem.y
+            distX = self.centerX - eachItem.x
+            distY = self.centerY - eachItem.y
 
             if(distY != 0):
-                symmetryX = centerX + distX
-                symmetryY = centerY + distY
+                symmetryX = self.centerX + distX
+                symmetryY = self.centerY + distY
                 newCoord = Coordinate(symmetryX,symmetryY)
                 symmetryList.insert(0, newCoord)
 
@@ -216,22 +143,26 @@ class CameraGridMaker:
     #===============================================================================
     # Main Camera Grid computation Algortihm
     #===============================================================================
-    def createCameraLookUpGrid(self):
-        global CameraCoords
-        CameraCoords = []
+    def _setUpCoordinates(self, CameraCoords, newCoord, inputList, seeUp):
+        for eachItem in CameraCoords:
+            newCoord = Coordinate(eachItem.x, seeUp)
+            inputList.append(newCoord)
 
-        currentXPos = centerX
+    def createCameraLookUpGrid(self):
+        self.CameraCoords = []
+
+        currentXPos = self.centerX
         seeRight = currentXPos
         walkRight = currentXPos
         #Walk all the way right first until maxX bound is reached
         while(True):
-            seeRight = (currentXPos + CamPixelX)
-            walkRight = (currentXPos + CamPixelX / 2)
-            if(walkRight < maxX):
-                if(seeRight < maxX):
-                    currentXPos += CamPixelX
-                elif(seeRight >= maxX):
-                    currentXPos += CamPixelX
+            seeRight = (currentXPos + self.CamPixelX)
+            walkRight = (currentXPos + self.CamPixelX / 2)
+            if(walkRight < self.maxX):
+                if(seeRight < self.maxX):
+                    currentXPos += self.CamPixelX
+                elif(seeRight >= self.maxX):
+                    currentXPos += self.CamPixelX
                     break
             else:
                 break
@@ -241,52 +172,50 @@ class CameraGridMaker:
         seeLeft = currentXPos
         walkLeft = currentXPos
         while(True):
-            seeLeft = (currentXPos - CamPixelX)
-            walkLeft = (currentXPos - CamPixelX / 2)
-            if(walkLeft > minX):
-                if(seeLeft > minX):
-                    newCoord = Coordinate(currentXPos, centerY)
-                    CameraCoords.append(newCoord)
-                    currentXPos -= CamPixelX
-                elif(seeLeft <= minX):
-                    newCoord = Coordinate(currentXPos, centerY)
-                    CameraCoords.append(newCoord)
-                    currentXPos -= CamPixelX
-                    newCoord = Coordinate(currentXPos, centerY)
-                    CameraCoords.append(newCoord)
+            seeLeft = (currentXPos - self.CamPixelX)
+            walkLeft = (currentXPos - self.CamPixelX / 2)
+            if(walkLeft > self.minX):
+                if(seeLeft > self.minX):
+                    newCoord = Coordinate(currentXPos, self.centerY)
+                    self.CameraCoords.append(newCoord)
+                    currentXPos -= self.CamPixelX
+                elif(seeLeft <= self.minX):
+                    newCoord = Coordinate(currentXPos, self.centerY)
+                    self.CameraCoords.append(newCoord)
+                    currentXPos -= self.CamPixelX
+                    newCoord = Coordinate(currentXPos, self.centerY)
+                    self.CameraCoords.append(newCoord)
                     break
             else:
-                newCoord = Coordinate(currentXPos, centerY)
-                CameraCoords.append(newCoord)
+                newCoord = Coordinate(currentXPos, self.centerY)
+                self.CameraCoords.append(newCoord)
                 break
 
 
         #Now create the x-Axis lines
         cacheList = []
-        currentYPos = centerY
+        currentYPos = self.centerY
         while(True):
             switcher = 0
             #Rows that have the switcher module result
             #of 0 fill from left to right
             if(switcher % 2 == 0):
                 reverserList = []
-                seeUp = (currentYPos - CamPixelY)
-                walkUp = (currentYPos - CamPixelY / 2)
-                if(walkUp > minY):
-                    if(seeUp > minY):
-                        for eachItem in CameraCoords:
-                            newCoord = Coordinate(eachItem.x, seeUp)
-                            reverserList.append(newCoord)
+                seeUp = (currentYPos - self.CamPixelY)
+                walkUp = (currentYPos - self.CamPixelY / 2)
+                if(walkUp > self.minY):
+                    if(seeUp > self.minY):
+                        self._setUpCoordinates(
+                            self.CameraCoords, newCoord, reverserList, seeUp)
 
                         reverserList.reverse()
                         reverserList.extend(cacheList)
                         cacheList = reverserList
                         currentYPos = seeUp
                         switcher += 1
-                    elif(seeUp <= minY):
-                        for eachItem in CameraCoords:
-                            newCoord = Coordinate(eachItem.x, seeUp)
-                            reverserList.append(newCoord)
+                    elif(seeUp <= self.minY):
+                        self._setUpCoordinates(
+                            self.CameraCoords, newCoord, reverserList, seeUp)
 
                         reverserList.reverse()
                         reverserList.extend(cacheList)
@@ -300,22 +229,20 @@ class CameraGridMaker:
             # of 1 fill from right to left
             if(switcher % 2 == 1):
                 localList = []
-                seeUp = (currentYPos - CamPixelY)
-                walkUp = (currentYPos - CamPixelY / 2)
-                if(walkUp > minY):
-                    if(seeUp > minY):
-                        for eachItem in CameraCoords:
-                            newCoord = Coordinate(eachItem.x, seeUp)
-                            localList.append(newCoord)
+                seeUp = (currentYPos - self.CamPixelY)
+                walkUp = (currentYPos - self.CamPixelY / 2)
+                if(walkUp > self.minY):
+                    if(seeUp > self.minY):
+                        self._setUpCoordinates(
+                            self.CameraCoords, newCoord, localList, seeUp)
 
                         localList.extend(cacheList)
                         cacheList = localList
                         currentYPos = seeUp
                         switcher += 1
-                    elif(seeUp <= minY):
-                        for eachItem in CameraCoords:
-                            newCoord = Coordinate(eachItem.x, seeUp)
-                            localList.append(newCoord)
+                    elif(seeUp <= self.minY):
+                        self._setUpCoordinates(
+                            self.CameraCoords, newCoord, localList, seeUp)
 
                         localList.extend(cacheList)
                         cacheList = localList
@@ -326,36 +253,36 @@ class CameraGridMaker:
                     break
 
         #Insert the new list items into the Cameracoordinate List
-        cacheList.extend(CameraCoords)
-        CameraCoords = cacheList
+        cacheList.extend(self.CameraCoords)
+        self.CameraCoords = cacheList
 
         #Create the lower half of the Grid
         #by making a point symmetrical Copy
-        CameraCoords.extend(self.makePointSymmetry(cacheList))
+        self.CameraCoords.extend(self.makePointSymmetry(cacheList))
 
     def getMinX(self):
-        return minX
+        return self.minX
 
     def getMaxX(self):
-        return maxX
+        return self.maxX
 
     def getMinY(self):
-        return minY
+        return self.minY
 
     def getMaxY(self):
-        return maxY
+        return self.maxY
 
     def getCampixelX(self):
-        return CamPixelX
+        return self.CamPixelX
 
     def getCampixelY(self):
-        return CamPixelY
+        return self.CamPixelY
 
     def getCenterX(self):
-        return centerX
+        return self.centerX
 
     def getCenterY(self):
-        return centerY
+        return self.centerY
 
     def getCameraCoords(self):
-        return CameraCoords
+        return self.CameraCoords

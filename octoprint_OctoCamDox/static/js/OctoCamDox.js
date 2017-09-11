@@ -11,7 +11,7 @@ $(function() {
 
         self.stateString = ko.observable("No file loaded");
         self.cameraResolution = ko.observable("");
-        self.debugvar = ko.observable("");
+        self.camStatus = ko.observable("");
         self.CamGridHeader = ko.observable("Camera lookup grid");
 
         self.layerDownEnabled = ko.observable(false);
