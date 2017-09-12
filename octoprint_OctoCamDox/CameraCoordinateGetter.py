@@ -5,6 +5,7 @@ Created on 18.07.2017
 '''
 
 from GCode_processor import Coordinate
+from copy import deepcopy
 
 #===============================================================================
 # Help Functions
@@ -217,6 +218,57 @@ class CameraGridMaker:
         #Create the lower half of the Grid
         #by making a point symmetrical Copy
         self.CameraCoords.extend(self.makePointSymmetry(cacheList))
+
+    #===========================================================================
+    # Grid Optimizer
+    #===========================================================================
+
+    """The idea behind this algorithm is to remove the bottom row
+    and then move the entire grid down to see if that brought
+    an improvement over the previous grid."""
+    def optimizeGrid( self ):
+        # Save the original Cameracoords in case the optimization failed
+        localList = deepcopy(self.CameraCoords)
+        # If row is 1 then no optimization is necessary
+        if( self.rows > 1 ):
+            # Remove last row
+            elemPerRow = len( localList ) / self.getRows()
+            del localList[elemPerRow * ( self.getRows() - 1 ):len( localList )]
+
+            # Move the grid down into the center
+            gridCenterX, gridCenterY = self.getCenterOfGrid(localList)
+            for eachItem in localList:
+                eachItem.x = eachItem.x + gridCenterX
+                eachItem.y = eachItem.y + gridCenterY
+            # Once the grid was moved get new Extrema bounds
+            newMinX,newMinY,newMaxX,NewMaxY = self.getGridExtrema(localList)
+            # Check if the Grid is still covering everything
+            if(self.minY >= newMinY and self.maxY <= NewMaxY):
+                self.CameraCoords = localList
+
+    def getCenterOfGrid( self, inputlist ):
+        coordCenterX = 0
+        coordCenterY = 0
+        for eachItem in inputlist:
+            coordCenterX += eachItem.x
+            coordCenterY += eachItem.y
+        # Generate the average
+        coordCenterX = coordCenterX / len( inputlist )
+        coordCenterY = coordCenterY / len( inputlist )
+        # Make the difference between the current Center
+        coordCenterX = self.centerX - coordCenterX
+        coordCenterY = self.centerY - coordCenterY
+
+        return coordCenterX, coordCenterY
+
+    def getGridExtrema( self, inputlist ):
+        locminX = inputlist[0].x - (self.CamPixelX / 2)
+        locminY = inputlist[0].y - (self.CamPixelY / 2)
+        locmaxX = inputlist[len(inputlist)-1].x + (self.CamPixelX / 2)
+        locmaxY = inputlist[len(inputlist)-1].y + (self.CamPixelY / 2)
+        return locminX,locminY,locmaxX,locmaxY
+
+    #------------------------------------------------------------------------------
 
     def getRows(self):
         return self.rows

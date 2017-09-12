@@ -31,6 +31,8 @@ import datetime
 import base64
 import shutil
 import json
+import struct
+import imghdr
 
 from .GCode_processor import CameraGCodeExtraction as GCodex
 from .GCode_processor import CustomJSONEncoder as CoordJSONify
@@ -192,6 +194,7 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             #Execute all necessary operations to create the actual CameraGrid
             newGridMaker.getCoordinates()
             newGridMaker.createCameraLookUpGrid()
+            newGridMaker.optimizeGrid()
 
             infoList.append([newGridMaker.getMaxX(),
                     newGridMaker.getMinX(),
