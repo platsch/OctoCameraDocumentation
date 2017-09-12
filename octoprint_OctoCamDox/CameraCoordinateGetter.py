@@ -32,9 +32,12 @@ class CameraGridMaker:
     centerX = None
     centerY = None
 
+    rows = None
+
     def __init__(self,incomingCoordList,layer,CamResX,CamResY):
         self.CamPixelX = CamResX
         self.CamPixelY = CamResY
+        self.rows = 0
         self.CordList = incomingCoordList[layer]
 
     #Creates the work list we're using for our computations
@@ -138,6 +141,8 @@ class CameraGridMaker:
                 newCoord = Coordinate(symmetryX,symmetryY)
                 symmetryList.insert(0, newCoord)
 
+        #Update rows properly considering the point symmetry
+        self.makeRowPointSymmetrical()
         return symmetryList
 
     #===============================================================================
@@ -190,6 +195,7 @@ class CameraGridMaker:
                 newCoord = Coordinate(currentXPos, self.centerY)
                 self.CameraCoords.append(newCoord)
                 break
+        self.incrementRow()
 
 
         #Now create the x-Axis lines
@@ -213,6 +219,7 @@ class CameraGridMaker:
                         cacheList = reverserList
                         currentYPos = seeUp
                         switcher += 1
+                        self.incrementRow()
                     elif(seeUp <= self.minY):
                         self._setUpCoordinates(
                             self.CameraCoords, newCoord, reverserList, seeUp)
@@ -222,6 +229,7 @@ class CameraGridMaker:
                         cacheList = reverserList
                         currentYPos = seeUp
                         switcher += 1
+                        self.incrementRow()
                         break
                 else:
                     break
@@ -240,6 +248,7 @@ class CameraGridMaker:
                         cacheList = localList
                         currentYPos = seeUp
                         switcher += 1
+                        self.incrementRow()
                     elif(seeUp <= self.minY):
                         self._setUpCoordinates(
                             self.CameraCoords, newCoord, localList, seeUp)
@@ -248,6 +257,7 @@ class CameraGridMaker:
                         cacheList = localList
                         currentYPos = seeUp
                         switcher += 1
+                        self.incrementRow()
                         break
                 else:
                     break
@@ -259,6 +269,15 @@ class CameraGridMaker:
         #Create the lower half of the Grid
         #by making a point symmetrical Copy
         self.CameraCoords.extend(self.makePointSymmetry(cacheList))
+
+    def getRows(self):
+        return self.rows
+
+    def incrementRow(self):
+        self.rows += 1
+
+    def makeRowPointSymmetrical(self):
+        self.rows = (self.rows * 2) - 1
 
     def getMinX(self):
         return self.minX
