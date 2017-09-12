@@ -52,34 +52,6 @@ class CameraGridMaker:
             self.computeCenterOfExtremes()
             self.workList.append(Coord)
 
-    #Draws the printed Object
-    def drawGCodeLines(self,inputlist,img):
-        i = 0
-        while i < len(inputlist) - 1:
-            xStart = int(inputlist[i].x)
-            yStart = int(inputlist[i].y)
-            xEnd = int(inputlist[i + 1].x)
-            yEnd = int(inputlist[i + 1].y)
-            img.drawBlueLines(xStart, yStart, xEnd, yEnd)
-            i += 1
-
-    #Draws the path the Camera will take
-    def drawCameraLines(self,inputlist,img):
-        i = 0
-        while i < len(inputlist) - 1:
-            xStart = int(inputlist[i].x)
-            yStart = int(inputlist[i].y)
-            xEnd = int(inputlist[i + 1].x)
-            yEnd = int(inputlist[i + 1].y)
-            img.drawCameraLines(xStart, yStart, xEnd, yEnd)
-            i += 1
-
-    #Draws the found Camerasectorboxes on the Screen
-    def drawAllFoundCameraPositions(self,inputList,img):
-        for eachItem in inputList:
-            print(eachItem.x,eachItem.y)
-            img.drawBoxFromCenter(int(eachItem.x), int(eachItem.y))
-
     #Find the Extrema for the Bounding Box
     def findXYExtremas(self,NewX,NewY):
         #Initialize with some base values other than zero
@@ -98,30 +70,6 @@ class CameraGridMaker:
                 self.minY = NewY
             elif(NewY > self.maxY):
                 self.maxY = NewY
-
-    def findYMinMaxInList(self,inputList,mode):
-        result = None
-        if(mode == 'min'):
-            previous = None
-            for each in inputList:
-                #Initilize
-                if(previous == None):
-                    previous = each.y
-                if(each < previous):
-                    previous = each.y
-            result = previous
-
-        if(mode == 'max'):
-            previous = None
-            for each in inputList:
-                #Initilize
-                if(previous == None):
-                    previous = each.y
-                if(each > previous):
-                    previous = each.y
-            result = previous
-
-        return result
 
     #Compute the Center of the printed Object
     def computeCenterOfExtremes(self):
