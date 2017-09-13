@@ -229,22 +229,40 @@ class CameraGridMaker:
     def optimizeGrid( self ):
         # Save the original Cameracoords in case the optimization failed
         localList = deepcopy(self.CameraCoords)
-        # If row is 1 then no optimization is necessary
-        if( self.rows > 1 ):
-            # Remove last row
-            elemPerRow = len( localList ) / self.getRows()
-            del localList[elemPerRow * ( self.getRows() - 1 ):len( localList )]
 
-            # Move the grid down into the center
-            gridCenterX, gridCenterY = self.getCenterOfGrid(localList)
+        # If there's only one row check for X-Axis optimization
+        if( self.rows == 1 ):
+            # Remove last element of the list
+            del localList[len( localList ) - 1]
+            # Move the grid to the left
+            gridCenterX, gridCenterY = self.getCenterOfGrid( localList )
             for eachItem in localList:
                 eachItem.x = eachItem.x + gridCenterX
                 eachItem.y = eachItem.y + gridCenterY
             # Once the grid was moved get new Extrema bounds
-            newMinX,newMinY,newMaxX,NewMaxY = self.getGridExtrema(localList)
+            newMinX, newMaxX = self.getGridXExtrema( localList )
             # Check if the Grid is still covering everything
-            if(self.minY >= newMinY and self.maxY <= NewMaxY):
+            print("Maximums: ",self.maxX,self.minX,newMinX,newMaxX)
+            if( self.minX >= newMinX and self.maxX <= newMaxX ):
                 self.CameraCoords = localList
+
+        # If row is 1 then no Y-Axis optimization is necessary
+        if( self.rows > 1 ):
+            # Remove last row
+            elemPerRow = self.getElementsPerRow( localList )
+            del localList[elemPerRow * ( self.getRows() - 1 ):len( localList )]
+
+            # Move the grid down into the center
+            gridCenterX, gridCenterY = self.getCenterOfGrid( localList )
+            for eachItem in localList:
+                eachItem.x = eachItem.x + gridCenterX
+                eachItem.y = eachItem.y + gridCenterY
+            # Once the grid was moved get new Extrema bounds
+            newMinY, newMaxY = self.getGridYExtrema( localList )
+            # Check if the Grid is still covering everything
+            if( self.minY >= newMinY and self.maxY <= newMaxY ):
+                self.CameraCoords = localList
+                self.rows -= 1
 
     def getCenterOfGrid( self, inputlist ):
         coordCenterX = 0
@@ -261,12 +279,19 @@ class CameraGridMaker:
 
         return coordCenterX, coordCenterY
 
-    def getGridExtrema( self, inputlist ):
-        locminX = inputlist[0].x - (self.CamPixelX / 2)
-        locminY = inputlist[0].y - (self.CamPixelY / 2)
-        locmaxX = inputlist[len(inputlist)-1].x + (self.CamPixelX / 2)
-        locmaxY = inputlist[len(inputlist)-1].y + (self.CamPixelY / 2)
-        return locminX,locminY,locmaxX,locmaxY
+    def getGridYExtrema( self, inputlist ):
+        locminY = inputlist[0].y - ( self.CamPixelY / 2 )
+        locmaxY = inputlist[len( inputlist ) - 1].y + ( self.CamPixelY / 2 )
+        return locminY, locmaxY
+
+    def getGridXExtrema( self, inputlist ):
+        locmaxX = inputlist[0].x + ( self.CamPixelX / 2 )
+        locminX = inputlist[len( inputlist ) - 1].x - ( self.CamPixelX / 2 )
+        return locminX, locmaxX
+
+    def getElementsPerRow( self, inputList ):
+        elemPerRow = len( inputList ) / self.getRows()
+        return elemPerRow
 
     #------------------------------------------------------------------------------
 
