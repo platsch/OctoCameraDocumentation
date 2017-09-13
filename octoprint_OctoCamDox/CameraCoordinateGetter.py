@@ -8,7 +8,7 @@ from GCode_processor import Coordinate
 from copy import deepcopy
 
 #===============================================================================
-# Help Functions
+# Main class
 #===============================================================================
 class CameraGridMaker:
 
@@ -33,7 +33,10 @@ class CameraGridMaker:
     centerX = None
     centerY = None
 
+    # Stores the number of total tile rows
     rows = None
+    # Stores the mode of the tilemaker algorithm
+    switcher = None
 
     def __init__(self,incomingCoordList,layer,CamResX,CamResY):
         self.CamPixelX = CamResX
@@ -150,11 +153,12 @@ class CameraGridMaker:
         #Now create the x-Axis lines
         cacheList = []
         currentYPos = self.centerY
+        self.switcher = 0
         while(True):
             switcher = 0
             #Rows that have the switcher module result
             #of 0 fill from left to right
-            if(switcher % 2 == 0):
+            if(self.switcher % 2 == 0):
                 reverserList = []
                 seeUp = (currentYPos - self.CamPixelY)
                 walkUp = (currentYPos - self.CamPixelY / 2)
@@ -167,7 +171,7 @@ class CameraGridMaker:
                         reverserList.extend(cacheList)
                         cacheList = reverserList
                         currentYPos = seeUp
-                        switcher += 1
+                        self.switcher += 1
                         self.incrementRow()
                     elif(seeUp <= self.minY):
                         self._setUpCoordinates(
@@ -177,14 +181,14 @@ class CameraGridMaker:
                         reverserList.extend(cacheList)
                         cacheList = reverserList
                         currentYPos = seeUp
-                        switcher += 1
+                        self.switcher += 1
                         self.incrementRow()
                         break
                 else:
                     break
             #Rows that have the switcher module result
             # of 1 fill from right to left
-            if(switcher % 2 == 1):
+            if(self.switcher % 2 == 1):
                 localList = []
                 seeUp = (currentYPos - self.CamPixelY)
                 walkUp = (currentYPos - self.CamPixelY / 2)
@@ -196,7 +200,7 @@ class CameraGridMaker:
                         localList.extend(cacheList)
                         cacheList = localList
                         currentYPos = seeUp
-                        switcher += 1
+                        self.switcher -= 1
                         self.incrementRow()
                     elif(seeUp <= self.minY):
                         self._setUpCoordinates(
@@ -205,7 +209,7 @@ class CameraGridMaker:
                         localList.extend(cacheList)
                         cacheList = localList
                         currentYPos = seeUp
-                        switcher += 1
+                        self.switcher -= 1
                         self.incrementRow()
                         break
                 else:
@@ -220,7 +224,7 @@ class CameraGridMaker:
         self.CameraCoords.extend(self.makePointSymmetry(cacheList))
 
     #===========================================================================
-    # Grid Optimizer
+    # Grid optimizer algorithm
     #===========================================================================
 
     """The idea behind this algorithm is to remove the bottom row
@@ -229,8 +233,10 @@ class CameraGridMaker:
     def optimizeGrid( self ):
         # Save the original Cameracoords in case the optimization failed
         localList = deepcopy(self.CameraCoords)
-
+        # Get elements per Row
+        elemPerRow = self.getElementsPerRow( localList )
         # If there's only one row check for X-Axis optimization
+#------------------------------------------------------------------------------
         if( self.rows == 1 ):
             # Remove last element of the list
             del localList[len( localList ) - 1]
@@ -240,16 +246,15 @@ class CameraGridMaker:
                 eachItem.x = eachItem.x + gridCenterX
                 eachItem.y = eachItem.y + gridCenterY
             # Once the grid was moved get new Extrema bounds
-            newMinX, newMaxX = self.getGridXExtrema( localList )
+            newMinX, newMaxX = self.getGridXExtrema( localList , "RightToLeft" , elemPerRow-2)
             # Check if the Grid is still covering everything
-            print("Maximums: ",self.maxX,self.minX,newMinX,newMaxX)
             if( self.minX >= newMinX and self.maxX <= newMaxX ):
-                self.CameraCoords = localList
+                self.CameraCoords = deepcopy(localList)
 
-        # If row is 1 then no Y-Axis optimization is necessary
+        # If row is greater than 1 we do more sophisticated optimizations
+#------------------------------------------------------------------------------
         if( self.rows > 1 ):
             # Remove last row
-            elemPerRow = self.getElementsPerRow( localList )
             del localList[elemPerRow * ( self.getRows() - 1 ):len( localList )]
 
             # Move the grid down into the center
@@ -261,8 +266,44 @@ class CameraGridMaker:
             newMinY, newMaxY = self.getGridYExtrema( localList )
             # Check if the Grid is still covering everything
             if( self.minY >= newMinY and self.maxY <= newMaxY ):
-                self.CameraCoords = localList
+                self.CameraCoords = deepcopy(localList)
                 self.rows -= 1
+
+            # Remove tiles on the X-Axis and then check if all is still covered
+            localList = deepcopy( self.CameraCoords ) # Get a fresh copy of list
+            locSwitch = self.switcher
+            # Initilize index depending on last switcher mode
+            if(self.switcher == 0):
+                index = elemPerRow-1
+            else:
+                index = 0
+            # Mark the tiles for deletion now but preserve the array index
+            while(index < len(localList)):
+                if(locSwitch == 1):
+                    localList[index] = None # Assign None to keep index intact
+                    index += (elemPerRow*2)-1
+                    locSwitch -= 1
+                elif(locSwitch == 0):
+                    localList[index] = None # Assign None to keep index intact
+                    index += 1
+                    locSwitch += 1
+            # Now remove the None items
+            localList = [x for x in localList if x is not None]
+            # Move the grid to the left
+            gridCenterX, gridCenterY = self.getCenterOfGrid( localList )
+            for eachItem in localList:
+                eachItem.x = eachItem.x + gridCenterX
+                eachItem.y = eachItem.y + gridCenterY
+            # Once the grid was moved get new Extrema bounds
+            if(self.switcher == 0):
+                newMinX, newMaxX = self.getGridXExtrema( localList , "RightToLeft" , elemPerRow-1)
+            elif(self.switcher == 1):
+                newMinX, newMaxX = self.getGridXExtrema( localList , "LeftToRight" , elemPerRow-1)
+            # Check if the Grid is still covering everything
+            if( self.minX >= newMinX and self.maxX <= newMaxX ):
+                self.CameraCoords = deepcopy(localList)
+
+#------------------------------------------------------------------------------
 
     def getCenterOfGrid( self, inputlist ):
         coordCenterX = 0
@@ -276,7 +317,6 @@ class CameraGridMaker:
         # Make the difference between the current Center
         coordCenterX = self.centerX - coordCenterX
         coordCenterY = self.centerY - coordCenterY
-
         return coordCenterX, coordCenterY
 
     def getGridYExtrema( self, inputlist ):
@@ -284,16 +324,21 @@ class CameraGridMaker:
         locmaxY = inputlist[len( inputlist ) - 1].y + ( self.CamPixelY / 2 )
         return locminY, locmaxY
 
-    def getGridXExtrema( self, inputlist ):
-        locmaxX = inputlist[0].x + ( self.CamPixelX / 2 )
-        locminX = inputlist[len( inputlist ) - 1].x - ( self.CamPixelX / 2 )
-        return locminX, locmaxX
+    def getGridXExtrema( self, inputlist , mode , edgeElement):
+        if(mode == "RightToLeft"):
+            locmaxX = inputlist[0].x + ( self.CamPixelX / 2 )
+            locminX = inputlist[edgeElement].x - ( self.CamPixelX / 2 )
+            return locminX, locmaxX
+        if(mode == "LeftToRight"):
+            locminX = inputlist[0].x - ( self.CamPixelX / 2 )
+            locmaxX = inputlist[edgeElement].x + ( self.CamPixelX / 2 )
+            return locminX, locmaxX
 
     def getElementsPerRow( self, inputList ):
         elemPerRow = len( inputList ) / self.getRows()
         return elemPerRow
 
-    #------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 
     def getRows(self):
         return self.rows
