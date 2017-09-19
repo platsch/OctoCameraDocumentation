@@ -161,8 +161,10 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             #Initilize the Cameraextractor Class
             newCamExtractor = GCodex(0.25,'T0')
             #Retrieve the basefolder for the GCode uploads
-            uploadsPath = self._settings.global_get_basefolder("uploads") + "\\" + payload.get("path")
-
+            dir_name = self._settings.global_get_basefolder("uploads")
+            base_filename = payload.get("path")
+            uploadsPath = os.path.join(dir_name, base_filename)
+            #f = open(payload.get("file"),'r')
             f = self._openGCodeFiles(uploadsPath)
             #f = open(testPath, 'r')
 
@@ -227,12 +229,13 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             self._printer.commands("T0")
             self._printer.commands("G1 Z" + str(self._currentZ+5) + " F" + str(self.FEEDRATE)) # lift printhead
 
-            for eachItem in self.CameraGridCoordsList[0]:
+            for eachItem in self.CameraGridCoordsList[self.currentLayer]:
                 # move camera to grid position
                 self._logger.info( "Move camera to position X: %s Y: %s", str(eachItem.x), str(eachItem.y))
                 cmd = "G1 X" + str(eachItem.x) + " Y" + str(eachItem.y) + " F" + str(self.FEEDRATE)
                 self._printer.commands(cmd)
 
+            self.currentLayer += 1 #Increment layer
             self._printer.commands("G1 Z" + str(self._currentZ-5) + " F" + str(self.FEEDRATE)) # lower printhead
             return "G4 P1" # return dummy command
 
