@@ -176,6 +176,10 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
 
             #Get the values for the Camera grid box sizes
             self._getAndSetGridResolution()
+            if(self.CamPixelX == None or self.CamPixelY == None):
+                self._logger.info("No proper Camera values found, using default values")
+                self.CamPixelX = 15
+                self.CamPixelY = 15
 
             self._createCameraGrid(
                 self.GCoordsList,
@@ -243,9 +247,14 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
     	print "returned image path: "
     	print path
         self.cameraImagePath = path
-        elem = self.getNewQeueElem()
-        if(elem):
-            self.get_camera_image(elem.x, elem.y, self.get_camera_image_callback, False)
+        print("Entered Callback")
+        if(self.CamPixelX == None or self.CamPixelY == None):
+            print("Entered assign values after callback.")
+            self.assignGridValuesAfterCallback()
+        elif(self.CamPixelX and self.CamPixelY):
+            elem = self.getNewQeueElem()
+            if(elem):
+                self.get_camera_image(elem.x, elem.y, self.get_camera_image_callback, False)
 
     def getNewQeueElem(self):
         if(self.qeue):
@@ -275,9 +284,12 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
     def _getAndSetGridResolution(self):
         # use the helper to retrieve the Pixel per Millimeter ratio
         PixelPerMillimeter = self.get_camera_resolution("HEAD")
-        # TODO: Remove hardcoded position and just get a random picture
+        # TODO: Fetch Image in callback
         # Use the Camera helper from OctoPNP to grab an actual Image from the HEAD camera
         self.get_camera_image(0, 0, self.get_camera_image_callback, True)
+
+
+    def assignGridValuesAfterCallback(self):
         # Perform actions when there was a proper picture found
         if(self.cameraImagePath):
             self._logger.info("The found image path was: ",self.cameraImagePath)
@@ -286,11 +298,6 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             # Divide the resolution by the PixelPerMillimeter ratio
             self.CamPixelX = width / PixelPerMillimeter
             self.CamPixelY = height / PixelPerMillimeter
-        # If no data could be retrieved use default values
-        else:
-            self._logger.info("No proper image found, using default values")
-            self.CamPixelX = 15
-            self.CamPixelY = 15
 
 
     """This function retrieves the resolution of the .png, .gif or .jpeg image file passed into it.
