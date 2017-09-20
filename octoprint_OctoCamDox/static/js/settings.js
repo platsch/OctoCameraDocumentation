@@ -3,6 +3,9 @@ $(function() {
         var self = this;
 
         self.picture_folder_uploads = ko.observable(undefined);
+        self.picture_width = ko.observable(undefined);
+        self.picture_height = ko.observable(undefined);
+        self.getImageRes = ko.observable(true);
     }
 
 
