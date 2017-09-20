@@ -34,6 +34,7 @@ import json
 import struct
 import imghdr
 
+from collections import deque
 from .GCode_processor import CameraGCodeExtraction as GCodex
 from .GCode_processor import CustomJSONEncoder as CoordJSONify
 from .CameraCoordinateGetter import CameraGridMaker
@@ -72,6 +73,7 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         self.currentLayer = 0
 
         self.cameraImagePath = None
+        self.qeue = None
 
         self.CamPixelX = None
         self.CamPixelY = None
@@ -164,9 +166,8 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             dir_name = self._settings.global_get_basefolder("uploads")
             base_filename = payload.get("path")
             uploadsPath = os.path.join(dir_name, base_filename)
-            #f = open(payload.get("file"),'r')
+
             f = self._openGCodeFiles(uploadsPath)
-            #f = open(testPath, 'r')
 
             #Extract the GCodes for the CameraPath Algortihm
             newCamExtractor.extractCameraGCode(f)
@@ -175,6 +176,10 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
 
             #Get the values for the Camera grid box sizes
             self._getAndSetGridResolution()
+            if(self.CamPixelX == None or self.CamPixelY == None):
+                self._logger.info("No proper Camera values found, using default values")
+                self.CamPixelX = 15
+                self.CamPixelY = 15
 
             self._createCameraGrid(
                 self.GCoordsList,
@@ -227,16 +232,11 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
 
             # switch to pimary extruder, since the head camera is relative to this extruder and the offset to PNP nozzle might not be known (firmware offset)
             self._printer.commands("T0")
-            self._printer.commands("G1 Z" + str(self._currentZ+5) + " F" + str(self.FEEDRATE)) # lift printhead
+            # Create the qeue for the printer camera coordinates
+            self.qeue = deque(self.CameraGridCoordsList[self.currentLayer])
+            elem = self.getNewQeueElem()
+            self.get_camera_image(elem.x, elem.y, self.get_camera_image_callback, True)
 
-            for eachItem in self.CameraGridCoordsList[self.currentLayer]:
-                # move camera to grid position
-                self._logger.info( "Move camera to position X: %s Y: %s", str(eachItem.x), str(eachItem.y))
-                cmd = "G1 X" + str(eachItem.x) + " Y" + str(eachItem.y) + " F" + str(self.FEEDRATE)
-                self._printer.commands(cmd)
-
-            self.currentLayer += 1 #Increment layer
-            self._printer.commands("G1 Z" + str(self._currentZ-5) + " F" + str(self.FEEDRATE)) # lower printhead
             return "G4 P1" # return dummy command
 
     	if "M945" in cmd:
@@ -247,6 +247,21 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
     	print "returned image path: "
     	print path
         self.cameraImagePath = path
+        print("Entered Callback")
+        if(self.CamPixelX == None or self.CamPixelY == None):
+            print("Entered assign values after callback.")
+            self.assignGridValuesAfterCallback()
+        elif(self.CamPixelX and self.CamPixelY):
+            elem = self.getNewQeueElem()
+            if(elem):
+                self.get_camera_image(elem.x, elem.y, self.get_camera_image_callback, False)
+
+    def getNewQeueElem(self):
+        if(self.qeue):
+            return self.qeue.popleft()
+        else:
+            self.currentLayer += 1 #Increment layer when qeue was empty
+            return(None)
 
     def _openGCodeFiles(self, inputName):
         gcode = open( inputName, 'r' )
@@ -269,9 +284,12 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
     def _getAndSetGridResolution(self):
         # use the helper to retrieve the Pixel per Millimeter ratio
         PixelPerMillimeter = self.get_camera_resolution("HEAD")
-        # TODO: Remove hardcoded position and just get a random picture
+        # TODO: Fetch Image in callback
         # Use the Camera helper from OctoPNP to grab an actual Image from the HEAD camera
         self.get_camera_image(0, 0, self.get_camera_image_callback, True)
+
+
+    def assignGridValuesAfterCallback(self):
         # Perform actions when there was a proper picture found
         if(self.cameraImagePath):
             self._logger.info("The found image path was: ",self.cameraImagePath)
@@ -280,11 +298,6 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             # Divide the resolution by the PixelPerMillimeter ratio
             self.CamPixelX = width / PixelPerMillimeter
             self.CamPixelY = height / PixelPerMillimeter
-        # If no data could be retrieved use default values
-        else:
-            self._logger.info("No proper image found, using default values")
-            self.CamPixelX = 15
-            self.CamPixelY = 15
 
 
     """This function retrieves the resolution of the .png, .gif or .jpeg image file passed into it.
