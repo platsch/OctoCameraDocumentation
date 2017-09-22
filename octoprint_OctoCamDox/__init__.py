@@ -78,7 +78,6 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         self.CamPixelX = None
         self.CamPixelY = None
 
-
     def on_after_startup(self):
     #     self.imgproc = ImageProcessing(
     #         float(self._settings.get(["tray", "boxsize"])),
@@ -96,51 +95,10 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             self._logger.info("FOUND HELPER FOR CAMERARESOLUTION!!!")
             self.get_camera_resolution = helpers["get_head_camera_pxPerMM"]
 
-
     def get_settings_defaults(self):
-        return {
-            #"publicHost": None,
-            #"publicPort": None,
-            "tray": {
-                "x": 0,
-                "y": 0,
-                "z": 0,
-                "rows" : 5,
-                "columns": 5,
-                "boxsize": 10,
-                "rimsize": 1.0
-            },
-            "vacnozzle": {
-                "x": 0,
-                "y": 0,
-                "z_pressure": 0,
-                "extruder_nr": 2,
-                "grip_vacuum_gcode": "M340 P0 S1200",
-                "release_vacuum_gcode": "M340 P0 S1500",
-                "lower_nozzle_gcode": "",
-                "lift_nozzle_gcode": ""
-            },
-            "camera": {
-                "head": {
-                    "x": 0,
-                    "y": 0,
-                    "z": 0,
-                    "path": "",
-                    "binary_thresh": 150,
-                    "grabScriptPath": ""
-                },
-                "bed": {
-                    "x": 0,
-                    "y": 0,
-                    "z": 0,
-                    "pxPerMM": 50.0,
-                    "path": "",
-                    "binary_thresh": 150,
-                    "grabScriptPath": ""
-                },
-                "image_logging": False
-            }
-        }
+        return dict(target_folder = "C:\Desktop",
+                    picture_width = 800,
+                    picture_height = 800)
 
     def get_template_configs(self):
         return [
