@@ -28,9 +28,7 @@ $(function() {
                     if(response.hasOwnProperty("height")) {
                         self.picture_height(response.height);
                     }
-                    if(response.hasOwnProperty("error")) {
-                        alert(response.error);
-                    }
+
                 }
             });
         };

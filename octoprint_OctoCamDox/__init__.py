@@ -78,6 +78,9 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         self.CamPixelX = None
         self.CamPixelY = None
 
+        self.our_pic_width = None
+        self.our_pic_height = None
+
     def on_after_startup(self):
     #     self.imgproc = ImageProcessing(
     #         float(self._settings.get(["tray", "boxsize"])),
@@ -120,7 +123,9 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         )
 
     def on_api_get(self, request):
-        return flask.jsonify(width=700,height=700)
+        new_width,new_height = self._setNewGridResolution()
+        return flask.jsonify(width = new_width,
+                             height = new_height)
 
     # Use the on_event hook to extract XML data every time a new file has been loaded by the user
     def on_event(self, event, payload):
@@ -141,12 +146,10 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             self.GCoordsList = newCamExtractor.getCoordList()
 
             #Get the values for the Camera grid box sizes
-            self._getAndSetGridResolution()
-            if(self.CamPixelX == None or self.CamPixelY == None):
-                self._logger.info("No proper Camera values found, using default values")
-                self.CamPixelX = 15
-                self.CamPixelY = 15
-
+            self._computeLookupGridValues()
+            print("CamPixelX was :", self.CamPixelX)
+            print("CamPixelY was :", self.CamPixelY)
+            #Now create the actual grid
             self._createCameraGrid(
                 self.GCoordsList,
                 self.CamPixelX,
@@ -214,10 +217,7 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
     	print path
         self.cameraImagePath = path
         print("Entered Callback")
-        if(self.CamPixelX == None or self.CamPixelY == None):
-            print("Entered assign values after callback.")
-            self.assignGridValuesAfterCallback()
-        elif(self.CamPixelX and self.CamPixelY):
+        if(self.CamPixelX and self.CamPixelY):
             elem = self.getNewQeueElem()
             if(elem):
                 self.get_camera_image(elem.x, elem.y, self.get_camera_image_callback, False)
@@ -247,24 +247,24 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
 
     """This function sets up the necessary values for the camera lookup grid steps,
     it tries to get legit values first and elsely uses hardcoded default values"""
-    def _getAndSetGridResolution(self):
+    def _setNewGridResolution(self):
         # use the helper to retrieve the Pixel per Millimeter ratio
         PixelPerMillimeter = self.get_camera_resolution("HEAD")
         # TODO: Fetch Image in callback
         # Use the Camera helper from OctoPNP to grab an actual Image from the HEAD camera
         self.get_camera_image(0, 0, self.get_camera_image_callback, True)
-
-
-    def assignGridValuesAfterCallback(self):
-        # Perform actions when there was a proper picture found
         if(self.cameraImagePath):
             self._logger.info("The found image path was: ",self.cameraImagePath)
-            imagePath = self.get_camera_image_callback
-            width, height = self._get_image_size(imagePath)
-            # Divide the resolution by the PixelPerMillimeter ratio
-            self.CamPixelX = width / PixelPerMillimeter
-            self.CamPixelY = height / PixelPerMillimeter
+            return self._get_image_size(self.cameraImagePath)
+        else:
+            return self._settings.get_int(["picture_width"]),
+            self._settings.get_int(["picture_height"])
 
+    def _computeLookupGridValues(self):
+        PixelPerMillimeter = self.get_camera_resolution("HEAD")
+        # Divide the resolution by the PixelPerMillimeter ratio
+        self.CamPixelX = self._settings.get_int(["picture_width"]) / PixelPerMillimeter
+        self.CamPixelY = self._settings.get_int(["picture_height"]) / PixelPerMillimeter
 
     """This function retrieves the resolution of the .png, .gif or .jpeg image file passed into it.
     This function was copypasted from https://stackoverflow.com/questions/8032642/how-to-obtain-image-size-using-standard-python-class-without-using-external-lib
