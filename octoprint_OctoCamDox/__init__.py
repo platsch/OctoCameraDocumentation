@@ -114,6 +114,14 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
                 "js/settings.js"]
         )
 
+    def get_api_commands(self):
+        return dict(
+            getImageResolution=[],
+        )
+
+    def on_api_get(self, request):
+        return flask.jsonify(width=700,height=700)
+
     # Use the on_event hook to extract XML data every time a new file has been loaded by the user
     def on_event(self, event, payload):
         #extraxt part informations from inline xmly

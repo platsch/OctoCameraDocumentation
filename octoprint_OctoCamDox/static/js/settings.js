@@ -14,7 +14,25 @@ $(function() {
         };
 
         self.getImageRes = function() {
-            console.log("Update Camera Resolution");
+            console.log("Updating Camera Resolution, make sure the printer is online!");
+            $.ajax({
+                url: "api" + PLUGIN_BASEURL + "OctoCamDox",
+                type: "GET",
+                dataType: "json",
+                contentType: "application/json; charset=UTF-8",
+                //data: JSON.stringify(data),
+                success: function(response) {
+                    if(response.hasOwnProperty("width")) {
+                        self.picture_width(response.width);
+                    }
+                    if(response.hasOwnProperty("height")) {
+                        self.picture_height(response.height);
+                    }
+                    if(response.hasOwnProperty("error")) {
+                        alert(response.error);
+                    }
+                }
+            });
         };
 
         // This will get called before the HelloWorldViewModel gets bound to the DOM, but after its
