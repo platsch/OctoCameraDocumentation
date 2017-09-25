@@ -99,8 +99,8 @@ $(function() {
                         camCoords = JSON.parse(data.data.cameraCoordinates);
                         _cameraGrid = new camGrid(BoxWidth,BoxHeight,infoList,selectedLayer,gcodeCoords,camCoords,_cameraGridCanvas);
 
-                        // _cameraGrid.erase();
                         _cameraGrid.setCurrentLayer(selectedLayer);
+                        // Center objects once on instantiation
                         _centerObjects();
                         _redrawObjects();
                         _updateLayerHeader();

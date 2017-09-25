@@ -44,9 +44,8 @@ class CameraGCodeExtraction:
     currentExtruderZPos = 0.0      #Stores the last Z Position of the extruder
     lastExtruderZPos = 0.0
 
-    CoordList = []
-    shortCoordList = []
-    masterCoordList = []
+    shortCoordList = None
+    masterCoordList = None
 
     #desiredExtruder = raw_input('Enter your input Extruder: ')
     #Z_layer = float(raw_input('Enter your input Layer: '))
@@ -58,6 +57,9 @@ class CameraGCodeExtraction:
         self.Z_layer = self.z_stepping * self.currentLayer
         self.currentExtruderZPos = self.Z_layer
         self.lastExtruderZPos = self.Z_layer
+        # Initialize lists
+        self.shortCoordList = []
+        self.masterCoordList = []
 
     def validZValues(self, z_values ):
         return z_values != None
