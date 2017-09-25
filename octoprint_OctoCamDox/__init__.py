@@ -147,8 +147,6 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
 
             #Get the values for the Camera grid box sizes
             self._computeLookupGridValues()
-            print("CamPixelX was :", self.CamPixelX)
-            print("CamPixelY was :", self.CamPixelY)
             #Now create the actual grid
             self._createCameraGrid(
                 self.GCoordsList,
@@ -213,7 +211,7 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
 
 
     def get_camera_image_callback(self, path):
-    	print "returned image path: "
+    	print "Returned image path was: "
     	print path
         self.cameraImagePath = path
         print("Entered Callback")
