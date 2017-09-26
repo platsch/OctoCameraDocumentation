@@ -105,7 +105,7 @@ class CameraGCodeExtraction:
 
             #Get the X and Y values of the extruder at the specified layer
             if self.extruder_working(self.desiredExtruder):
-                xy_values = re.match('G1 X(\d+.\d+) Y(\d+.\d+)', line)
+                xy_values = re.match('G1 X(\d+.\d+) Y(\d+.\d+) E\d+.\d+', line)
                 if xy_values != None:
                     newCoord = Coordinate(
                         float(xy_values.group(1)),
