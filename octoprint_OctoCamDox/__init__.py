@@ -34,6 +34,9 @@ import json
 import struct
 import imghdr
 
+import time
+import datetime
+
 from collections import deque
 from .GCode_processor import CameraGCodeExtraction as GCodex
 from .GCode_processor import CustomJSONEncoder as CoordJSONify
@@ -71,6 +74,7 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         self.CameraGridCoordsList = []
         self.GridInfoList = []
         self.currentLayer = 0
+        self.gridIndex = 0
 
         self.cameraImagePath = None
         self.qeue = None
@@ -147,6 +151,7 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
 
             #Get the values for the Camera grid box sizes
             self._computeLookupGridValues()
+
             #Now create the actual grid
             self._createCameraGrid(
                 self.GCoordsList,
@@ -218,14 +223,26 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         if(self.CamPixelX and self.CamPixelY):
             elem = self.getNewQeueElem()
             if(elem):
+                shutil.copyfile(path, self.getProperTargetPathName("png"))
                 self.get_camera_image(elem.x, elem.y, self.get_camera_image_callback, False)
 
     def getNewQeueElem(self):
         if(self.qeue):
+            self.gridIndex += 1 #Increment Tile after each deque
             return self.qeue.popleft()
         else:
             self.currentLayer += 1 #Increment layer when qeue was empty
             return(None)
+
+    def getTimeStamp(self):
+        ts = time.time()
+        timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+        return timestamp
+
+    def getProperTargetPathName(self,filesuffix):
+        basepath = os.path.join(self._settings.get(["target_folder"]), 'Printjob_{}'.format(self.getTimeStamp()))
+        newpathname = os.path.join(basepath, 'Layer_{}'.format(self.currentLayer) + '_Tile_{}'.format(self.gridIndex)) + '.' + filesuffix
+        return newpathname
 
     def _openGCodeFiles(self, inputName):
         gcode = open( inputName, 'r' )
