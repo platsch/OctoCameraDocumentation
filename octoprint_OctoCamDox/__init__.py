@@ -85,6 +85,8 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         self.our_pic_width = None
         self.our_pic_height = None
 
+        self.currentPrintJobDir = None #Holds the current printjob folder dir
+
     def on_after_startup(self):
     #     self.imgproc = ImageProcessing(
     #         float(self._settings.get(["tray", "boxsize"])),
@@ -161,7 +163,10 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             self._logger.info("Created the camera lookup grid succesfully from the file: %s", payload.get("file"))
             self._logger.info( "Current Target folder setting is: %s", self._settings.get(["target_folder"]))
             self._updateUI("FILE", "")
-
+        # Create new Folder for dropping the images for the new printjob
+        if(event == "PrintStarted"):
+            self.currentPrintJobDir = self.getBasePath()
+            os.mkdir(self.currentPrintJobDir)
 
     def _createCameraGrid(self,inputList,CamResX,CamResY):
         templist = []
@@ -213,7 +218,8 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             return "G4 P1" # return dummy command
 
     	if "M945" in cmd:
-    	    self.get_camera_image(100, 80, self.get_camera_image_callback, False)
+    	    self.currentPrintJobDir = self.getBasePath()
+            os.mkdir(self.currentPrintJobDir)
 
 
     def get_camera_image_callback(self, path):
@@ -226,7 +232,7 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             if(elem):
                 # Copy found files over to the target destination folder
                 self.copyImageFiles(path)
-                self._logger.info( "Copied Image to %s", self.getBasePath())
+                self._logger.info( "Copied Image to %s", self.getBasePath() )
                 self.get_camera_image(elem.x, elem.y, self.get_camera_image_callback, False)
 
     def getNewQeueElem(self):
@@ -238,18 +244,20 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             return(None)
 
     def copyImageFiles(self, srcpath):
-        os.mkdir(self.getBasePath())
-        shutil.copyfile(srcpath, self.getProperTargetPathName("png"))
+        # TODO: Remove below hardcoded line
+        newSRCPath = os.path.join(srcpath, "Sample_880x880.png")
+
+        shutil.copyfile(newSRCPath, self.getProperTargetPathName("png"))
 
     def getProperTargetPathName(self,filesuffix):
-        return os.path.join(self.getBasePath(), 'Layer_{}'.format(self.currentLayer) + '_Tile_{}'.format(self.gridIndex)) + '.' + filesuffix
+        return os.path.join(self.currentPrintJobDir, 'Layer_{}'.format(self.currentLayer) + '_Tile_{}'.format(self.gridIndex)) + '.' + filesuffix
 
     def getBasePath(self):
         return os.path.join(self._settings.get(["target_folder"]), 'Printjob_{}'.format(self.getTimeStamp()))
 
     def getTimeStamp(self):
         ts = time.time()
-        timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+        timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d__%H_%M_%S')
         return timestamp
 
     def _openGCodeFiles(self, inputName):
