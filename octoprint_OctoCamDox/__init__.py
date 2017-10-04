@@ -228,11 +228,12 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         self.cameraImagePath = path
         print("Entered Callback")
         if(self.CamPixelX and self.CamPixelY):
+            # Copy found files over to the target destination folder
+            self.copyImageFiles(self.cameraImagePath)
+            self._logger.info( "Copied Image to: %s", self.getBasePath() )
+            # Get new element and continue tacking pictures if qeue not empty
             elem = self.getNewQeueElem()
             if(elem):
-                # Copy found files over to the target destination folder
-                self.copyImageFiles(path)
-                self._logger.info( "Copied Image to %s", self.getBasePath() )
                 self.get_camera_image(elem.x, elem.y, self.get_camera_image_callback, False)
 
     def getNewQeueElem(self):
@@ -241,10 +242,12 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             return self.qeue.popleft()
         else:
             self.currentLayer += 1 #Increment layer when qeue was empty
+            self.gridIndex = 0 #Reset Grid Index
             return(None)
 
     def copyImageFiles(self, srcpath):
-        # TODO: Remove below hardcoded line
+        self._logger.info( "Copy Image from: %s", srcpath )
+        # TODO: Remove below hardcoded image path
         newSRCPath = os.path.join(srcpath, "Sample_880x880.png")
 
         shutil.copyfile(newSRCPath, self.getProperTargetPathName("png"))
@@ -257,7 +260,7 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
 
     def getTimeStamp(self):
         ts = time.time()
-        timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d__%H_%M_%S')
+        timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d__%H'+'h'+'_%M'+'m'+'_%S'+'s')
         return timestamp
 
     def _openGCodeFiles(self, inputName):
