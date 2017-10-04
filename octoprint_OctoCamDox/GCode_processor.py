@@ -30,7 +30,7 @@ class CustomJSONEncoder(json.JSONEncoder):
         return CustomJSONEncoder(self, o)
 
 #===============================================================================
-# Refactored extracted methods
+# Main class
 #===============================================================================
 class CameraGCodeExtraction:
 
@@ -44,55 +44,53 @@ class CameraGCodeExtraction:
     currentExtruderZPos = 0.0      #Stores the last Z Position of the extruder
     lastExtruderZPos = 0.0
 
-    CoordList = []
-    shortCoordList = []
-    masterCoordList = []
+    shortCoordList = None
+    masterCoordList = None
 
     #desiredExtruder = raw_input('Enter your input Extruder: ')
     #Z_layer = float(raw_input('Enter your input Layer: '))
 
-
+    """The instantiation function for the incoming values
+    :param zSteps: Holds the value how thick a layer is. For example 0.25
+    :param targetExtruder: Specifies the monitored Extruder. For example T0"""
     def __init__(self,zSteps,targetExtruder):
         self.desiredExtruder = targetExtruder
         self.z_stepping = float(zSteps)
         self.Z_layer = self.z_stepping * self.currentLayer
-        self.currentExtruderZPos = self.Z_layer
-        self.lastExtruderZPos = self.Z_layer
+        # Initialize lists
+        self.shortCoordList = []
+        self.masterCoordList = []
 
-    def validZValues(self, z_values ):
-        return z_values != None
+    """The main function to handle the extraction of the GCode information from
+    a given testfile
+    :param Data: Contains the textdata for processing"""
+    def extractCameraGCode(self, Data):
+        zWorkList = self.findAllZValues(Data)
+        for eachItem in zWorkList:
+            self.Z_layer = eachItem
+            self.findAllGCodesInLayer(Data)
+        self.swapfirstArrayEntries()
 
-    def extruder_working(self, inputExtruder):
-        return self.currentExtruderZPos == self.Z_layer and self.current_extruder == inputExtruder
-
-    def writeFiles(self, inputArray, filename):
-        text_file = open(filename, "w")
-
-        for item in inputArray:
-            text_file.write(item)
-
-        text_file.close()
-        return
-
-    def openFiles(self, inputName):
-        gcode = open( inputName, 'r' )
-        readData = gcode.readlines()
-        gcode.close()
-        return readData
-
+    """Finds all layers for further processing
+    :param Data: Contains the textdata for processing"""
     def findAllZValues(self,Data):
         zValueList = []
+        previousZ = 0.0
+        currentZ = 0.0
         for line in Data:
             z_values = re.match('G1 Z(\d+.\d+)', line)
 
             if(self.validZValues(z_values)):
-                if(not zValueList.__contains__(float(z_values.group(1)))):
+                # Check if new Z value is smaller to filter unwanted values
+                previousZ = currentZ
+                currentZ = z_values.group(1)
+                if(not zValueList.__contains__(float(z_values.group(1)))
+                    and currentZ < previousZ):
                     zValueList.append(float(z_values.group(1)))
         return zValueList
 
     """Do some RegEx to find the entries of value for us.
-
-    :param Data: Contains the lines from the textfiles for further processing
+    :param Data: Contains the textdata for processing
     """
     def findAllGCodesInLayer(self, Data):
         for line in Data:
@@ -107,30 +105,38 @@ class CameraGCodeExtraction:
 
             #Get the X and Y values of the extruder at the specified layer
             if self.extruder_working(self.desiredExtruder):
-                xy_values = re.match('G1 X(\d+.\d+) Y(\d+.\d+)', line)
+                xy_values = re.match('G1 X(\d+.\d+) Y(\d+.\d+) E\d+.\d+', line)
                 if xy_values != None:
                     newCoord = Coordinate(
                         float(xy_values.group(1)),
                         float(xy_values.group(2)))
                     self.shortCoordList.append(newCoord)
 
-        if(len(self.shortCoordList) >= 10):
+        # Make sure the list has enough entries
+        if(len(self.shortCoordList) >= 2):
             self.masterCoordList.append(self.shortCoordList)
 
         self.shortCoordList = []
 
-    def extractCameraGCode(self, Data):
-        zWorkList = self.findAllZValues(Data)
-        for eachItem in zWorkList:
-            self.Z_layer = eachItem
-            self.findAllGCodesInLayer(Data)
+#===============================================================================
+# Help functions
+#===============================================================================
 
+    def swapfirstArrayEntries(self):
+        mylist = self.masterCoordList
+        mylist[0],mylist[1] = mylist[1],mylist[0]
 
     def getCoordList(self):
         return self.masterCoordList
 
     def properSelectedExtruder(self, z_values):
         return self.validZValues(z_values) and self.current_extruder == self.desiredExtruder
+
+    def validZValues(self, z_values ):
+        return z_values != None
+
+    def extruder_working(self, inputExtruder):
+        return self.currentExtruderZPos == self.Z_layer and self.current_extruder == inputExtruder
 
 #===============================================================================
 # writeFiles(CoordList, desiredExtruder + "_ExtruderPositions.txt")

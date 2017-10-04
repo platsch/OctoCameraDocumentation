@@ -97,30 +97,6 @@ function camGrid(width, height, infoList, currentSelectedLayer, GCodeCoordinates
 					}
 	}
 
-	function _drawTray () {
-		if (_trayCanvas && _trayCanvas.getContext) {
-            var ctx = _trayCanvas.getContext("2d");
-            if (ctx) {
-                var size_x = ctx.canvas.width;
-                var size_y = ctx.canvas.height;
-                var canvasBoxSize = _getCanvasBoxSize();
-
-                //initialize white tray
-                ctx.strokeStyle = "black";
-                ctx.fillStyle = "white";
-                ctx.lineWidth = 1;
-                ctx.fillRect(0,0,size_x,size_y);
-                ctx.strokeRect (0,0,size_x,size_y);
-
-				for(var x=0; x<_camBoxWidth; x++) {
-                    for(var y=0; y<_camBoxHeight; y++) {
-                        _drawGridBox(x+1, y+1, canvasBoxSize);
-                    }
-                }
-            }
-        }
-	}
-
     // draw a single grid box
     function _drawGridBox(x, y) {
         if (_trayCanvas && _trayCanvas.getContext) {
@@ -181,7 +157,8 @@ function camGrid(width, height, infoList, currentSelectedLayer, GCodeCoordinates
 					var x = ctx.canvas.width/2;
 					var y = ctx.canvas.height/2;
 
-					// TODO: Zoomfactor should be calculated dynamically
+					// Reset the transformation matrix back to default
+					ctx.setTransform(1,0,0,1,0,0);
 					// Zoom object
 					ctx.translate(x, y);
 

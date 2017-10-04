@@ -34,6 +34,9 @@ import json
 import struct
 import imghdr
 
+import time
+import datetime
+
 from collections import deque
 from .GCode_processor import CameraGCodeExtraction as GCodex
 from .GCode_processor import CustomJSONEncoder as CoordJSONify
@@ -71,6 +74,7 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         self.CameraGridCoordsList = []
         self.GridInfoList = []
         self.currentLayer = 0
+        self.gridIndex = 0
 
         self.cameraImagePath = None
         self.qeue = None
@@ -78,6 +82,12 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         self.CamPixelX = None
         self.CamPixelY = None
 
+        self.our_pic_width = None
+        self.our_pic_height = None
+
+        self.currentPrintJobDir = None #Holds the current printjob folder dir
+
+        self.mode = "normal" #Contains the mode for the camera callback
 
     def on_after_startup(self):
     #     self.imgproc = ImageProcessing(
@@ -96,51 +106,10 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             self._logger.info("FOUND HELPER FOR CAMERARESOLUTION!!!")
             self.get_camera_resolution = helpers["get_head_camera_pxPerMM"]
 
-
     def get_settings_defaults(self):
-        return {
-            #"publicHost": None,
-            #"publicPort": None,
-            "tray": {
-                "x": 0,
-                "y": 0,
-                "z": 0,
-                "rows" : 5,
-                "columns": 5,
-                "boxsize": 10,
-                "rimsize": 1.0
-            },
-            "vacnozzle": {
-                "x": 0,
-                "y": 0,
-                "z_pressure": 0,
-                "extruder_nr": 2,
-                "grip_vacuum_gcode": "M340 P0 S1200",
-                "release_vacuum_gcode": "M340 P0 S1500",
-                "lower_nozzle_gcode": "",
-                "lift_nozzle_gcode": ""
-            },
-            "camera": {
-                "head": {
-                    "x": 0,
-                    "y": 0,
-                    "z": 0,
-                    "path": "",
-                    "binary_thresh": 150,
-                    "grabScriptPath": ""
-                },
-                "bed": {
-                    "x": 0,
-                    "y": 0,
-                    "z": 0,
-                    "pxPerMM": 50.0,
-                    "path": "",
-                    "binary_thresh": 150,
-                    "grabScriptPath": ""
-                },
-                "image_logging": False
-            }
-        }
+        return dict(target_folder = "C:\Desktop",
+                    picture_width = 800,
+                    picture_height = 800)
 
     def get_template_configs(self):
         return [
@@ -155,6 +124,20 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
                 "js/camGrid.js",
                 "js/settings.js"]
         )
+
+    def get_api_commands(self):
+        return dict(
+            getImageResolution=[],
+        )
+
+    def on_api_get(self, request):
+        self.mode = "resolution_get"
+        self._setNewGridResolution()
+        # As long as the variables are not here, send python to sleep
+        while(self.our_pic_width is None or self.our_pic_height is None):
+            time.sleep(1)
+        return flask.jsonify(width = self.our_pic_width,
+                             height = self.our_pic_height)
 
     # Use the on_event hook to extract XML data every time a new file has been loaded by the user
     def on_event(self, event, payload):
@@ -175,20 +158,21 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             self.GCoordsList = newCamExtractor.getCoordList()
 
             #Get the values for the Camera grid box sizes
-            self._getAndSetGridResolution()
-            if(self.CamPixelX == None or self.CamPixelY == None):
-                self._logger.info("No proper Camera values found, using default values")
-                self.CamPixelX = 15
-                self.CamPixelY = 15
+            self._computeLookupGridValues()
 
+            #Now create the actual grid
             self._createCameraGrid(
                 self.GCoordsList,
                 self.CamPixelX,
                 self.CamPixelY)
 
             self._logger.info("Created the camera lookup grid succesfully from the file: %s", payload.get("file"))
+            self._logger.info( "Current Target folder setting is: %s", self._settings.get(["target_folder"]))
             self._updateUI("FILE", "")
-
+        # Create new Folder for dropping the images for the new printjob
+        if(event == "PrintStarted"):
+            self.currentPrintJobDir = self.getBasePath()
+            os.mkdir(self.currentPrintJobDir)
 
     def _createCameraGrid(self,inputList,CamResX,CamResY):
         templist = []
@@ -240,28 +224,60 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             return "G4 P1" # return dummy command
 
     	if "M945" in cmd:
-    	    self.get_camera_image(100, 80, self.get_camera_image_callback, False)
+    	    self.currentPrintJobDir = self.getBasePath()
+            os.mkdir(self.currentPrintJobDir)
 
 
     def get_camera_image_callback(self, path):
-    	print "returned image path: "
+    	print "Returned image path was: "
     	print path
-        self.cameraImagePath = path
-        print("Entered Callback")
-        if(self.CamPixelX == None or self.CamPixelY == None):
-            print("Entered assign values after callback.")
-            self.assignGridValuesAfterCallback()
-        elif(self.CamPixelX and self.CamPixelY):
+        # self.cameraImagePath = path
+        # TODO: Remove below hardcoded image path
+        self.cameraImagePath = os.path.join(path, "Sample_880x880.png")
+        print("Entered image processing callback")
+
+        # Get the picture for the grid tiles here
+        if(self.mode == "normal"):
+            # Copy found files over to the target destination folder
+            self.copyImageFiles(self.cameraImagePath, "png")
+            self._logger.info( "Copied Image to: %s", self.getBasePath() )
+            # Get new element and continue tacking pictures if qeue not empty
             elem = self.getNewQeueElem()
             if(elem):
                 self.get_camera_image(elem.x, elem.y, self.get_camera_image_callback, False)
 
+        # Get the resolution for the settings button here
+        if(self.mode == "resolution_get"):
+            self.our_pic_width,self.our_pic_height = self._get_image_size(self.cameraImagePath)
+            self._logger.info("The found image resolution was: %dx%d",self.our_pic_width,self.our_pic_width)
+            self.mode = "normal" # Return to normal mode after finishing
+        # else:
+        #     return self._settings.get_int(["picture_width"]),
+        #     self._settings.get_int(["picture_height"])
+
     def getNewQeueElem(self):
         if(self.qeue):
+            self.gridIndex += 1 #Increment Tile after each deque
             return self.qeue.popleft()
         else:
             self.currentLayer += 1 #Increment layer when qeue was empty
+            self.gridIndex = 0 #Reset Grid Index
             return(None)
+
+    def copyImageFiles(self, srcpath, suffix):
+        self._logger.info( "Copy Image from: %s", srcpath )
+        shutil.copyfile(srcpath, self.getProperTargetPathName(suffix))
+
+    def getProperTargetPathName(self,filesuffix):
+        return os.path.join(self.currentPrintJobDir, 'Layer_{}'.format(self.currentLayer) + '_Tile_{}'.format(self.gridIndex)) + '.' + filesuffix
+
+    def getBasePath(self):
+        return os.path.join(self._settings.get(["target_folder"]), 'Printjob_{}'.format(self.getTimeStamp()))
+
+    def getTimeStamp(self):
+        ts = time.time()
+        timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d__%H'+'h'+'_%M'+'m'+'_%S'+'s')
+        return timestamp
 
     def _openGCodeFiles(self, inputName):
         gcode = open( inputName, 'r' )
@@ -281,24 +297,17 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
 
     """This function sets up the necessary values for the camera lookup grid steps,
     it tries to get legit values first and elsely uses hardcoded default values"""
-    def _getAndSetGridResolution(self):
+    def _setNewGridResolution(self):
         # use the helper to retrieve the Pixel per Millimeter ratio
         PixelPerMillimeter = self.get_camera_resolution("HEAD")
-        # TODO: Fetch Image in callback
-        # Use the Camera helper from OctoPNP to grab an actual Image from the HEAD camera
+        # Get an image to determine the camera resolution
         self.get_camera_image(0, 0, self.get_camera_image_callback, True)
 
-
-    def assignGridValuesAfterCallback(self):
-        # Perform actions when there was a proper picture found
-        if(self.cameraImagePath):
-            self._logger.info("The found image path was: ",self.cameraImagePath)
-            imagePath = self.get_camera_image_callback
-            width, height = self._get_image_size(imagePath)
-            # Divide the resolution by the PixelPerMillimeter ratio
-            self.CamPixelX = width / PixelPerMillimeter
-            self.CamPixelY = height / PixelPerMillimeter
-
+    def _computeLookupGridValues(self):
+        PixelPerMillimeter = self.get_camera_resolution("HEAD")
+        # Divide the resolution by the PixelPerMillimeter ratio
+        self.CamPixelX = self._settings.get_int(["picture_width"]) / PixelPerMillimeter
+        self.CamPixelY = self._settings.get_int(["picture_height"]) / PixelPerMillimeter
 
     """This function retrieves the resolution of the .png, .gif or .jpeg image file passed into it.
     This function was copypasted from https://stackoverflow.com/questions/8032642/how-to-obtain-image-size-using-standard-python-class-without-using-external-lib
