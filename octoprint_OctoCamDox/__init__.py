@@ -87,6 +87,8 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
 
         self.currentPrintJobDir = None #Holds the current printjob folder dir
 
+        self.mode = "normal" #Contains the mode for the camera callback
+
     def on_after_startup(self):
     #     self.imgproc = ImageProcessing(
     #         float(self._settings.get(["tray", "boxsize"])),
@@ -129,9 +131,13 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
         )
 
     def on_api_get(self, request):
-        new_width,new_height = self._setNewGridResolution()
-        return flask.jsonify(width = new_width,
-                             height = new_height)
+        self.mode = "resolution_get"
+        self._setNewGridResolution()
+        # As long as the variables are not here, send python to sleep
+        while(self.our_pic_width is None or self.our_pic_height is None):
+            time.sleep(1)
+        return flask.jsonify(width = self.our_pic_width,
+                             height = self.our_pic_height)
 
     # Use the on_event hook to extract XML data every time a new file has been loaded by the user
     def on_event(self, event, payload):
@@ -225,16 +231,29 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
     def get_camera_image_callback(self, path):
     	print "Returned image path was: "
     	print path
-        self.cameraImagePath = path
-        print("Entered Callback")
-        if(self.CamPixelX and self.CamPixelY):
+        # self.cameraImagePath = path
+        # TODO: Remove below hardcoded image path
+        self.cameraImagePath = os.path.join(path, "Sample_880x880.png")
+        print("Entered image processing callback")
+
+        # Get the picture for the grid tiles here
+        if(self.mode == "normal"):
             # Copy found files over to the target destination folder
-            self.copyImageFiles(self.cameraImagePath)
+            self.copyImageFiles(self.cameraImagePath, "png")
             self._logger.info( "Copied Image to: %s", self.getBasePath() )
             # Get new element and continue tacking pictures if qeue not empty
             elem = self.getNewQeueElem()
             if(elem):
                 self.get_camera_image(elem.x, elem.y, self.get_camera_image_callback, False)
+
+        # Get the resolution for the settings button here
+        if(self.mode == "resolution_get"):
+            self.our_pic_width,self.our_pic_height = self._get_image_size(self.cameraImagePath)
+            self._logger.info("The found image resolution was: %dx%d",self.our_pic_width,self.our_pic_width)
+            self.mode = "normal" # Return to normal mode after finishing
+        # else:
+        #     return self._settings.get_int(["picture_width"]),
+        #     self._settings.get_int(["picture_height"])
 
     def getNewQeueElem(self):
         if(self.qeue):
@@ -245,12 +264,9 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
             self.gridIndex = 0 #Reset Grid Index
             return(None)
 
-    def copyImageFiles(self, srcpath):
+    def copyImageFiles(self, srcpath, suffix):
         self._logger.info( "Copy Image from: %s", srcpath )
-        # TODO: Remove below hardcoded image path
-        newSRCPath = os.path.join(srcpath, "Sample_880x880.png")
-
-        shutil.copyfile(newSRCPath, self.getProperTargetPathName("png"))
+        shutil.copyfile(srcpath, self.getProperTargetPathName(suffix))
 
     def getProperTargetPathName(self,filesuffix):
         return os.path.join(self.currentPrintJobDir, 'Layer_{}'.format(self.currentLayer) + '_Tile_{}'.format(self.gridIndex)) + '.' + filesuffix
@@ -284,15 +300,8 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
     def _setNewGridResolution(self):
         # use the helper to retrieve the Pixel per Millimeter ratio
         PixelPerMillimeter = self.get_camera_resolution("HEAD")
-        # TODO: Fetch Image in callback
-        # Use the Camera helper from OctoPNP to grab an actual Image from the HEAD camera
+        # Get an image to determine the camera resolution
         self.get_camera_image(0, 0, self.get_camera_image_callback, True)
-        if(self.cameraImagePath):
-            self._logger.info("The found image path was: ",self.cameraImagePath)
-            return self._get_image_size(self.cameraImagePath)
-        else:
-            return self._settings.get_int(["picture_width"]),
-            self._settings.get_int(["picture_height"])
 
     def _computeLookupGridValues(self):
         PixelPerMillimeter = self.get_camera_resolution("HEAD")

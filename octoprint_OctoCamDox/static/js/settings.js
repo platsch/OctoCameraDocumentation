@@ -20,10 +20,10 @@ $(function() {
                 //data: JSON.stringify(data),
                 success: function(response) {
                     if(response.hasOwnProperty("width")) {
-                        self.picture_width(response.width);
+                        self.settings.plugins.OctoCamDox.picture_width(response.width);
                     }
                     if(response.hasOwnProperty("height")) {
-                        self.picture_height(response.height);
+                        self.settings.plugins.OctoCamDox.picture_height(response.height);
                     }
 
                 }
