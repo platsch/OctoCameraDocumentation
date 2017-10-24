@@ -6,7 +6,7 @@ OctoCamDox is an extension that allows Octoprint to use printer head mounted ind
 It currently requires the following hardware extensions::
 * A head camera to take close-up images from the printed layers.
 
-https://user-images.githubusercontent.com/19975052/31948581-95886530-b8d7-11e7-80ec-65bee74951a3.JPG
+![OctoCamDox-Overview](https://user-images.githubusercontent.com/19975052/31948581-95886530-b8d7-11e7-80ec-65bee74951a3.JPG)
 
 # Installation
 ## Prerequirements
@@ -37,4 +37,4 @@ Toggle whether you want the printer to actively take images during the printig p
 * Force right to left: Force the grid generation to always walk from right to left when taking pictures. This is useful on printers with high backlash values in order to achieve seamless pictures.
 * Add backlash flaps: Add additional "blind" coordinates that will not be considered for compiling the big picture but serve the purpose to circumvent backlash seams in the Y Axis on the resulting picture.
 
-https://user-images.githubusercontent.com/19975052/31948587-97673336-b8d7-11e7-99af-57b847c87f86.JPG
+![OctoCamDox-Settings](https://user-images.githubusercontent.com/19975052/31948587-97673336-b8d7-11e7-99af-57b847c87f86.JPG)
