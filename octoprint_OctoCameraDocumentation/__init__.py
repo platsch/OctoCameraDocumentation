@@ -39,7 +39,7 @@ import time
 import datetime
 
 from collections import deque
-from .GCode_processor import CameraGCodeExtraction as GCodex
+from .GCode_processor import GCodeProcessor
 from .GCode_processor import CustomJSONEncoder as CoordJSONify
 from .CameraCoordinateGetter import CameraGridMaker
 
@@ -138,19 +138,15 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
     def on_event(self, event, payload):
         #extraxt part informations from inline xmly
         if event == "FileSelected":
-            #Initilize the Cameraextractor Class
-            newCamExtractor = GCodex(0.25,'T0')
             #Retrieve the basefolder for the GCode uploads
             dir_name = self._settings.global_get_basefolder("uploads")
             base_filename = payload.get("path")
             uploadsPath = os.path.join(dir_name, base_filename)
+            file = self._openGCodeFiles(uploadsPath)
 
-            f = self._openGCodeFiles(uploadsPath)
-
-            #Extract the GCodes for the CameraPath Algortihm
-            newCamExtractor.extractCameraGCode(f)
-
-            self.GCoordsList = newCamExtractor.getCoordList()
+            # Extract layer-wise gcodes
+            gcode_processor = GCodeProcessor(file)
+            self.GCoordsList = gcode_processor.gcodePerLayer()
 
             #Get the values for the Camera grid box sizes
             self._computeLookupGridValues()
@@ -164,6 +160,7 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
             self._logger.info("Created the camera lookup grid succesfully from the file: %s", payload.get("file"))
             self._logger.info( "Current Target folder setting is: %s", self._settings.get(["target_folder"]))
             self._updateUI("FILE", "")
+
         # Create new Folder for dropping the images for the new printjob
         if(event == "PrintStarted"):
             self.currentPrintJobDir = self.getBasePath()

@@ -39,15 +39,12 @@ $(function() {
         // };
 
         function _redrawObjects(){
+            _cameraGrid.arrangeObjects();
             _cameraGrid.erase();
             _cameraGrid.drawGCodeLines();
             _cameraGrid.drawCameragrid();
             _cameraGrid.drawCameraPathLines();
             _cameraGrid.drawAllGridCenters();
-        }
-
-        function _centerObjects(){
-          _cameraGrid.arrangeObjects();
         }
 
         function _updateLayerHeader(){
@@ -101,7 +98,6 @@ $(function() {
 
                         _cameraGrid.setCurrentLayer(selectedLayer);
                         // Center objects once on instantiation
-                        _centerObjects();
                         _redrawObjects();
                         _updateLayerHeader();
 

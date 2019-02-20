@@ -12,10 +12,11 @@ class CameraGridMaker:
     CamResY = None
 
     #Below values store the extreme values found during the processing process
-    minX = None
-    minY = None
-    maxX = None
-    maxY = None
+    minX = 0.0
+    minY = 0.0
+    maxX = 10.0
+    maxY = 10.0
+    valid = False
 
     def __init__(self,layerGCode,layer,CamResX,CamResY):
         self.CamResX = CamResX
@@ -25,6 +26,7 @@ class CameraGridMaker:
 
         # find bounding box
         if(len(GCode) > 0):
+            self.valid = True
             self.minX = GCode[0].x
             self.maxX = GCode[0].x
             self.minY = GCode[0].y
@@ -62,7 +64,6 @@ class CameraGridMaker:
                 y += self.CamResY
                 x = self.minX - x_start_offset
 
-        #result.append(Coord)
         return result
 
 
@@ -79,7 +80,7 @@ class CameraGridMaker:
         return self.maxY
 
     def getCenterX(self):
-        return ((self.maxX - self.minX) / 2) + self.minX
+        return (self.minX + self.maxX) / 2
 
     def getCenterY(self):
-        return ((self.maxY - self.minY) / 2) + self.minY
+        return (self.minY + self.maxY) / 2

@@ -17,7 +17,7 @@ function camGrid(width, height, infoList, currentSelectedLayer, GCodeCoordinates
 
     self.erase = function() {
         _drawWhiteBox();
-                _drawRectangularGrid();
+        _drawRectangularGrid();
     };
 
     self.drawPrintables = function() {
