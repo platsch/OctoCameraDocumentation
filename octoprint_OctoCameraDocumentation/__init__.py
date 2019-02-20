@@ -1,21 +1,22 @@
 # -*- coding: utf-8 -*-
 """
-    This file is part of OctoCamDox
+    This file is part of OctoCameraDocumenation base on FragJackers OctoCameraDocumentation
 
-    OctoCamDox is free software: you can redistribute it and/or modify
+    OctoCameraDocumentation is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    OctoCamDox is distributed in the hope that it will be useful,
+    OctoCameraDocumentation is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with OctoCamDox.  If not, see <http://www.gnu.org/licenses/>.
+    along with OctoCameraDocumentation.  If not, see <http://www.gnu.org/licenses/>.
 
-    Main author: Dennis Struhs <dennis.struhs@hamburg.de>
+    Main author: Florens Wasserfall <wasserfall@informatik.uni-hamburg.de>
+    Dennis Struhs <dennis.struhs@hamburg.de>
 """
 
 from __future__ import absolute_import
@@ -43,22 +44,22 @@ from .GCode_processor import CustomJSONEncoder as CoordJSONify
 from .CameraCoordinateGetter import CameraGridMaker
 
 
-__plugin_name__ = "OctoCamDox"
-__plugin_version__ = "0.9"
+__plugin_name__ = "OctoCameraDocumentation"
+__plugin_version__ = "0.1"
 
 #instantiate plugin object and register hook for gcode injection
 def __plugin_load__():
 
-    octocamdox = OctoCamDox()
+    octocameradocumentation = OctoCameraDocumentation()
 
     global __plugin_implementation__
-    __plugin_implementation__ = octocamdox
+    __plugin_implementation__ = octocameradocumentation
 
     global __plugin_hooks__
-    __plugin_hooks__ = {'octoprint.comm.protocol.gcode.queuing': octocamdox.hook_gcode_queuing}
+    __plugin_hooks__ = {'octoprint.comm.protocol.gcode.queuing': octocameradocumentation.hook_gcode_queuing}
 
 
-class OctoCamDox(octoprint.plugin.StartupPlugin,
+class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
             octoprint.plugin.TemplatePlugin,
             octoprint.plugin.EventHandlerPlugin,
             octoprint.plugin.SettingsPlugin,
@@ -114,14 +115,14 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
 
     def get_template_configs(self):
         return [
-            dict(type="tab", template="OctoCamDox_tab.jinja2"),
-            dict(type="settings", template="OctoCamDox_settings.jinja2")
+            dict(type="tab", template="OctoCameraDocumentation_tab.jinja2"),
+            dict(type="settings", template="OctoCameraDocumentation_settings.jinja2")
             #dict(type="settings", custom_bindings=True)
         ]
 
     def get_assets(self):
         return dict(
-            js=["js/OctoCamDox.js",
+            js=["js/OctoCameraDocumentation.js",
                 "js/camGrid.js",
                 "js/settings.js"]
         )
@@ -232,9 +233,7 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
     def get_camera_image_callback(self, path):
     	print "Returned image path was: "
     	print path
-        # self.cameraImagePath = path
-        # TODO: Remove below hardcoded image path
-        self.cameraImagePath = os.path.join(path, "Sample_880x880.png")
+        self.cameraImagePath = path
         print("Entered image processing callback")
 
         # Get the picture for the grid tiles here
@@ -307,8 +306,10 @@ class OctoCamDox(octoprint.plugin.StartupPlugin,
     def _computeLookupGridValues(self):
         PixelPerMillimeter = self.get_camera_resolution("HEAD")
         # Divide the resolution by the PixelPerMillimeter ratio
-        self.CamPixelX = self._settings.get_int(["picture_width"]) / PixelPerMillimeter
-        self.CamPixelY = self._settings.get_int(["picture_height"]) / PixelPerMillimeter
+        print PixelPerMillimeter
+        print self._settings.get_int(["picture_width"])
+        self.CamPixelX = self._settings.get_int(["picture_width"]) / PixelPerMillimeter['x']
+        self.CamPixelY = self._settings.get_int(["picture_height"]) / PixelPerMillimeter['y']
 
     """This function retrieves the resolution of the .png, .gif or .jpeg image file passed into it.
     This function was copypasted from https://stackoverflow.com/questions/8032642/how-to-obtain-image-size-using-standard-python-class-without-using-external-lib

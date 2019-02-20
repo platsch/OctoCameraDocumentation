@@ -1,5 +1,5 @@
 $(function() {
-    function OctoCamDoxViewModel(parameters) {
+    function OctoCameraDocumentationViewModel(parameters) {
         var self = this;
 
         self.settings = parameters[0];
@@ -77,7 +77,7 @@ $(function() {
         };
 
         self.onTabChange = function(current, previous) {
-            self.tabActive = current == "#tab_plugin_OctoCamDox";
+            self.tabActive = current == "#tab_plugin_OctoCameraDocumentation";
             if (self.tabActive && (selectedLayer != undefined)) {
                 // self.loadFile(self.selectedFile.path(), self.selectedFile.date());
                 _cameraGrid.reDrawLayer(selectedLayer);
@@ -86,7 +86,7 @@ $(function() {
         };
 
        self.onDataUpdaterPluginMessage = function(plugin, data) {
-          if(plugin == "OctoCamDox") {
+          if(plugin == "OctoCameraDocumentation") {
               if(data.event == "FILE") {
                   if(data.data.hasOwnProperty("cameraCoordinates")) {
                       self.stateString("Succesfully created and loaded Camera Grid from GCode");
@@ -136,7 +136,7 @@ $(function() {
                   else if(data.event == "HEADIMAGE") {
                       document.getElementById('headCameraImage').setAttribute( 'src', data.data.src );
                   }
-              //self.debugvar("Plugin = OctoCamDox");
+              //self.debugvar("Plugin = OctoCameraDocumentation");
           }
       };
     }
@@ -145,12 +145,12 @@ $(function() {
     // the global variable ADDITIONAL_VIEWMODELS
     OCTOPRINT_VIEWMODELS.push({
         // This is the constructor to call for instantiating the plugin
-        construct: OctoCamDoxViewModel,
+        construct: OctoCameraDocumentationViewModel,
         // This is a list of dependencies to inject into the plugin, the order which you request here is the order
         // in which the dependencies will be injected into your view model upon instantiation via the parameters
         // argument
         dependencies: ["settingsViewModel", "controlViewModel", "connectionViewModel"],
         // Finally, this is the list of all elements we want this view model to be bound to.
-        elements: ["#tab_plugin_OctoCamDox"]
+        elements: ["#tab_plugin_OctoCameraDocumentation"]
     });
 });
