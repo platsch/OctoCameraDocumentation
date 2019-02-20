@@ -92,11 +92,7 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
         self.mode = "normal" #Contains the mode for the camera callback
 
     def on_after_startup(self):
-    #     self.imgproc = ImageProcessing(
-    #         float(self._settings.get(["tray", "boxsize"])),
-    #         int(self._settings.get(["camera", "bed", "binary_thresh"])),
-    #         int(self._settings.get(["camera", "head", "binary_thresh"])))
-    #     #used for communication to UI
+        #used for communication to UI
         self._pluginManager = octoprint.plugin.plugin_manager()
 
     # Add helpers from the auxilary OctoPNP plug-in to grab images and camera resolution
@@ -117,7 +113,6 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
         return [
             dict(type="tab", template="OctoCameraDocumentation_tab.jinja2"),
             dict(type="settings", template="OctoCameraDocumentation_settings.jinja2")
-            #dict(type="settings", custom_bindings=True)
         ]
 
     def get_assets(self):
@@ -127,14 +122,12 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
                 "js/settings.js"]
         )
 
-    def get_api_commands(self):
-        return dict(
-            getImageResolution=[],
-        )
-
+    # GET endpoint, provides image resolution for the settings UI
     def on_api_get(self, request):
         self.mode = "resolution_get"
         self._setNewGridResolution()
+        self.our_pic_width = None
+        self.our_pic_height = None
         # As long as the variables are not here, send python to sleep
         while(self.our_pic_width is None or self.our_pic_height is None):
             time.sleep(1)
@@ -184,11 +177,6 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
             #Creates a new CameraGridMaker Object with int Numbers for the Cam resolution
             newGridMaker = CameraGridMaker(inputList,count,CamResX,CamResY)
 
-            #Execute all necessary operations to create the actual CameraGrid
-            newGridMaker.getCoordinates()
-            newGridMaker.createCameraLookUpGrid()
-            newGridMaker.optimizeGrid()
-
             infoList.append([newGridMaker.getMaxX(),
                     newGridMaker.getMinX(),
                     newGridMaker.getMaxY(),
@@ -216,7 +204,7 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
             else:
                 self._currentZ = 0.0
 
-            # switch to pimary extruder, since the head camera is relative to this extruder and the offset to PNP nozzle might not be known (firmware offset)
+            # switch to pimary extruder, since the head camera is relative to this extruder
             self._printer.commands("T0")
             # Create the qeue for the printer camera coordinates
             self.qeue = deque(self.CameraGridCoordsList[self.currentLayer])
@@ -231,8 +219,6 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
 
 
     def get_camera_image_callback(self, path):
-    	print "Returned image path was: "
-    	print path
         self.cameraImagePath = path
         print("Entered image processing callback")
 
@@ -306,8 +292,6 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
     def _computeLookupGridValues(self):
         PixelPerMillimeter = self.get_camera_resolution("HEAD")
         # Divide the resolution by the PixelPerMillimeter ratio
-        print PixelPerMillimeter
-        print self._settings.get_int(["picture_width"])
         self.CamPixelX = self._settings.get_int(["picture_width"]) / PixelPerMillimeter['x']
         self.CamPixelY = self._settings.get_int(["picture_height"]) / PixelPerMillimeter['y']
 
