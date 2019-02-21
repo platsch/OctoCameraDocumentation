@@ -10,28 +10,32 @@ class ImageStitcher:
 
     rows = 0
     cols = 0
+    overlap = 0
     images = []
 
-    def __init__(self, rows, cols, images):
+    def __init__(self, rows, cols, overlap, images):
         self.rows = rows
         self.cols = cols
+        self.overlap = overlap
         self.images = images
 
     def merge_trivial(self):
         result = None
         if(len(self.images) > 0):
-            shape_x = self.images[0].shape[1]
-            shape_y = self.images[0].shape[0]
+            shape_x = self.images[0].shape[1] - 2*self.overlap
+            shape_y = self.images[0].shape[0] - 2*self.overlap
             result = np.zeros((shape_y*self.rows, shape_x*self.cols, 3), np.uint8)
 
             i = 0
             for row in range(self.rows):
                 for col in range(self.cols):
-                    result[row*shape_y:row*shape_y+shape_y, col*shape_x:col*shape_x+shape_x] = self.images[i]
+                    result[row*shape_y:row*shape_y+shape_y, col*shape_x:col*shape_x+shape_x] = self.images[i][self.overlap:shape_y+self.overlap, self.overlap:shape_x+self.overlap]
                     i+=1
 
         return result
 
+    def merge_overlapping(self):
+        pass
 
     # img1 is left or top image.
     # max overlap in pixel

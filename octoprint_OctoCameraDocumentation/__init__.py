@@ -109,9 +109,13 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
             self.get_camera_resolution = helpers["get_head_camera_pxPerMM"]
 
     def get_settings_defaults(self):
-        return dict(target_folder = "C:\Desktop",
-                    picture_width = 800,
-                    picture_height = 800)
+        return{
+            "target_folder" : "C:\Desktop",
+            "picture_width" : 800,
+            "picture_height" : 800,
+            "overlap" : 20,
+            "active" : True
+        }
 
     def get_template_configs(self):
         return [
@@ -143,35 +147,36 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
 
     # Use the on_event hook to extract XML data every time a new file has been loaded by the user
     def on_event(self, event, payload):
-        #extraxt part informations from inline xmly
-        if event == "FileSelected":
-            #Retrieve the basefolder for the GCode uploads
-            dir_name = self._settings.global_get_basefolder("uploads")
-            base_filename = payload.get("path")
-            uploadsPath = os.path.join(dir_name, base_filename)
-            file = self._openGCodeFiles(uploadsPath)
+        if(self._settings.get(["active"])):
+            #extraxt part informations from inline xmly
+            if event == "FileSelected":
+                #Retrieve the basefolder for the GCode uploads
+                dir_name = self._settings.global_get_basefolder("uploads")
+                base_filename = payload.get("path")
+                uploadsPath = os.path.join(dir_name, base_filename)
+                file = self._openGCodeFiles(uploadsPath)
 
-            # Extract layer-wise gcodes
-            gcode_processor = GCodeProcessor(file)
-            self.GCoordsList = gcode_processor.gcodePerLayer()
+                # Extract layer-wise gcodes
+                gcode_processor = GCodeProcessor(file)
+                self.GCoordsList = gcode_processor.gcodePerLayer()
 
-            #Get the values for the Camera grid box sizes
-            self._computeLookupGridValues()
+                #Get the values for the Camera grid box sizes
+                self._computeLookupGridValues()
 
-            #Now create the actual grid
-            self._createCameraGrid(
-                self.GCoordsList,
-                self.CamPixelX,
-                self.CamPixelY)
+                #Now create the actual grid
+                self._createCameraGrid(
+                    self.GCoordsList,
+                    self.CamPixelX,
+                    self.CamPixelY)
 
-            self._logger.info("Created the camera lookup grid succesfully from the file: %s", payload.get("file"))
-            self._logger.info( "Current Target folder setting is: %s", self._settings.get(["target_folder"]))
-            self._updateUI("FILE", "")
+                self._logger.info("Created the camera lookup grid succesfully from the file: %s", payload.get("file"))
+                self._logger.info( "Current Target folder setting is: %s", self._settings.get(["target_folder"]))
+                self._updateUI("FILE", "")
 
-        # Create new Folder for dropping the images for the new printjob
-        if(event == "PrintStarted"):
-            self.currentPrintJobDir = self.getBasePath()
-            os.mkdir(self.currentPrintJobDir)
+            # Create new Folder for dropping the images for the new printjob
+            if(event == "PrintStarted"):
+                self.currentPrintJobDir = self.getBasePath()
+                os.mkdir(self.currentPrintJobDir)
 
     def _createCameraGrid(self,inputList,CamResX,CamResY):
         templist = []
@@ -202,20 +207,23 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
     """
     def hook_gcode_queuing(self, comm_instance, phase, cmd, cmd_type, gcode, *args, **kwargs):
         if "M942" in cmd:
-            if(self._printer.is_printing()):
-                self._printer.pause_print()
-            self._logger.info( "Qeued command to start the Camera documentation" )
+            if(self._settings.get(["active"])):
+                if(self._printer.is_printing()):
+                    self._printer.pause_print()
+                self._logger.info( "Qeued command to start the Camera documentation" )
 
-            # Create the qeue for the printer camera coordinates
-            self.qeue = deque(self.CameraGridCoordsList[self.currentLayer])
-            elem = self.getNewQeueElem()
-            self.get_camera_image(elem.x, elem.y, self.get_camera_image_callback, True)
+                # Create the qeue for the printer camera coordinates
+                self.qeue = deque(self.CameraGridCoordsList[self.currentLayer])
+                elem = self.getNewQeueElem()
+                self.get_camera_image(elem.x, elem.y, self.get_camera_image_callback, True)
 
             return "G4 P1" # return dummy command
 
     	if "M945" in cmd:
-    	    self.currentPrintJobDir = self.getBasePath()
-            os.mkdir(self.currentPrintJobDir)
+            if(self._settings.get(["active"])):
+                self.currentPrintJobDir = self.getBasePath()
+                os.mkdir(self.currentPrintJobDir)
+            return "" # swallow custom gcodes even if not active
 
 
     def get_camera_image_callback(self, path):
@@ -247,7 +255,7 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
         else:
             # Do image processing
             layer_config = self.GridInfoList[self.currentLayer]
-            image_stitcher = ImageStitcher(layer_config[6], layer_config[7], self.image_array)
+            image_stitcher = ImageStitcher(layer_config[6], layer_config[7], self._settings.get_int(["overlap"]), self.image_array)
             layer_image = image_stitcher.merge_trivial()
             cv2.imwrite(os.path.join(self.currentPrintJobDir, "layer"+str(self.currentLayer)+".png"), layer_image)
             self.image_array = []
@@ -287,8 +295,8 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
     def _computeLookupGridValues(self):
         PixelPerMillimeter = self.get_camera_resolution("HEAD")
         # Divide the resolution by the PixelPerMillimeter ratio
-        self.CamPixelX = self._settings.get_int(["picture_width"]) / PixelPerMillimeter['x']
-        self.CamPixelY = self._settings.get_int(["picture_height"]) / PixelPerMillimeter['y']
+        self.CamPixelX = (self._settings.get_int(["picture_width"]) - 2*self._settings.get_int(["overlap"])) / PixelPerMillimeter['x']
+        self.CamPixelY = (self._settings.get_int(["picture_height"]) - 2*self._settings.get_int(["overlap"])) / PixelPerMillimeter['y']
 
     """This function retrieves the resolution of the .png, .gif or .jpeg image file passed into it.
     This function was copypasted from https://stackoverflow.com/questions/8032642/how-to-obtain-image-size-using-standard-python-class-without-using-external-lib
