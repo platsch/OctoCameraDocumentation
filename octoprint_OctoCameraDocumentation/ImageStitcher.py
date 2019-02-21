@@ -27,7 +27,7 @@ class ImageStitcher:
             result = np.zeros((shape_y*self.rows, shape_x*self.cols, 3), np.uint8)
 
             i = 0
-            for row in range(self.rows):
+            for row in reversed(range(self.rows)): # Y direction in printer is invers to numpy...
                 for col in range(self.cols):
                     result[row*shape_y:row*shape_y+shape_y, col*shape_x:col*shape_x+shape_x] = self.images[i][self.overlap:shape_y+self.overlap, self.overlap:shape_x+self.overlap]
                     i+=1
