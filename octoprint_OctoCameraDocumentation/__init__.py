@@ -208,7 +208,7 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
     def hook_gcode_queuing(self, comm_instance, phase, cmd, cmd_type, gcode, *args, **kwargs):
         if "M942" in cmd:
             if(self._settings.get(["active"])):
-                if(self._printer.is_printing()):
+                if(self._printer.is_printing() or self._printer.is_resuming()):
                     self._printer.pause_print()
                 self._logger.info( "Qeued command to start the Camera documentation" )
 
@@ -263,7 +263,7 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
 
             self.currentLayer += 1 #Increment layer when qeue was empty
             self.gridIndex = 0 #Reset Grid Index
-            if(self._printer.is_paused()):
+            if(self._printer.is_paused() or self._printer.is_pausing()):
                 print "resume print"
                 self._printer.resume_print()
             return(None)
