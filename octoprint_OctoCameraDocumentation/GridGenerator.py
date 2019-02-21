@@ -50,8 +50,8 @@ class CameraGridMaker:
         if self.minX is not None:
             x_range = abs(self.maxX - self.minX)
             y_range = abs(self.maxY - self.minY)
-            rows = int(x_range / self.CamResX) +1
-            cols = int(y_range / self.CamResY) +1
+            rows = self.getGridRows()
+            cols = self.getGridCols()
 
             x_start_offset = (rows * self.CamResX - x_range) / 2
             y_start_offset = (cols * self.CamResY - y_range) / 2
@@ -66,6 +66,13 @@ class CameraGridMaker:
 
         return result
 
+    def getGridRows(self):
+        x_range = abs(self.maxX - self.minX)
+        return int(x_range / self.CamResX) +1
+
+    def getGridCols(self):
+        y_range = abs(self.maxY - self.minY)
+        return int(y_range / self.CamResY) +1
 
     def getMinX(self):
         return self.minX

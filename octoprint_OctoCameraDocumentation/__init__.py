@@ -34,6 +34,8 @@ import shutil
 import json
 import struct
 import imghdr
+import cv2
+import numpy as np
 
 import time
 import datetime
@@ -41,7 +43,8 @@ import datetime
 from collections import deque
 from .GCode_processor import GCodeProcessor
 from .GCode_processor import CustomJSONEncoder as CoordJSONify
-from .CameraCoordinateGetter import CameraGridMaker
+from .GridGenerator import CameraGridMaker
+from .ImageStitcher import ImageStitcher
 
 
 __plugin_name__ = "OctoCameraDocumentation"
@@ -71,14 +74,12 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
 
 
     def __init__(self):
-        self._currentZ = None
         self.GCoordsList = []
         self.CameraGridCoordsList = []
         self.GridInfoList = []
         self.currentLayer = 0
         self.gridIndex = 0
 
-        self.cameraImagePath = None
         self.qeue = None
 
         self.CamPixelX = None
@@ -90,6 +91,9 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
         self.currentPrintJobDir = None #Holds the current printjob folder dir
 
         self.mode = "normal" #Contains the mode for the camera callback
+
+        self.image_array = [] #Stores the incoming images in an array
+        self.MergedImage = None #Is created by stitching the tile images together
 
     def on_after_startup(self):
         #used for communication to UI
@@ -125,7 +129,10 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
     # GET endpoint, provides image resolution for the settings UI
     def on_api_get(self, request):
         self.mode = "resolution_get"
-        self._setNewGridResolution()
+
+        # Get an image to determine the camera resolution
+        self.get_camera_image(0, 0, self.get_camera_image_callback, True)
+
         self.our_pic_width = None
         self.our_pic_height = None
         # As long as the variables are not here, send python to sleep
@@ -172,15 +179,17 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
         count = 0
         while count < len(inputList):
             #Creates a new CameraGridMaker Object with int Numbers for the Cam resolution
-            newGridMaker = CameraGridMaker(inputList,count,CamResX,CamResY)
+            grid_maker = CameraGridMaker(inputList,count,CamResX,CamResY)
 
-            infoList.append([newGridMaker.getMaxX(),
-                    newGridMaker.getMinX(),
-                    newGridMaker.getMaxY(),
-                    newGridMaker.getMinY(),
-                    newGridMaker.getCenterX(),
-                    newGridMaker.getCenterY()])
-            templist.append(newGridMaker.getCameraCoords())
+            infoList.append([grid_maker.getMaxX(),
+                    grid_maker.getMinX(),
+                    grid_maker.getMaxY(),
+                    grid_maker.getMinY(),
+                    grid_maker.getCenterX(),
+                    grid_maker.getCenterY(),
+                    grid_maker.getGridRows(),
+                    grid_maker.getGridCols()])
+            templist.append(grid_maker.getCameraCoords())
             count += 1
 
         #Retrieve the necessary variables to be forwarded to the Octoprint Canvas
@@ -193,16 +202,10 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
     """
     def hook_gcode_queuing(self, comm_instance, phase, cmd, cmd_type, gcode, *args, **kwargs):
         if "M942" in cmd:
+            if(self._printer.is_printing()):
+                self._printer.pause_print()
             self._logger.info( "Qeued command to start the Camera documentation" )
 
-            # Get current Z Position
-            if self._printer.get_current_data()["currentZ"]:
-                self._currentZ = float(self._printer.get_current_data()["currentZ"])
-            else:
-                self._currentZ = 0.0
-
-            # switch to pimary extruder, since the head camera is relative to this extruder
-            self._printer.commands("T0")
             # Create the qeue for the printer camera coordinates
             self.qeue = deque(self.CameraGridCoordsList[self.currentLayer])
             elem = self.getNewQeueElem()
@@ -216,13 +219,12 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
 
 
     def get_camera_image_callback(self, path):
-        self.cameraImagePath = path
         print("Entered image processing callback")
 
         # Get the picture for the grid tiles here
         if(self.mode == "normal"):
             # Copy found files over to the target destination folder
-            self.copyImageFiles(self.cameraImagePath, "png")
+            self.copyImageFiles(path)
             self._logger.info( "Copied Image to: %s", self.getBasePath() )
             # Get new element and continue tacking pictures if qeue not empty
             elem = self.getNewQeueElem()
@@ -231,7 +233,7 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
 
         # Get the resolution for the settings button here
         if(self.mode == "resolution_get"):
-            self.our_pic_width,self.our_pic_height = self._get_image_size(self.cameraImagePath)
+            self.our_pic_width,self.our_pic_height = self._get_image_size(path)
             self._logger.info("The found image resolution was: %dx%d",self.our_pic_width,self.our_pic_width)
             self.mode = "normal" # Return to normal mode after finishing
         # else:
@@ -243,24 +245,31 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
             self.gridIndex += 1 #Increment Tile after each deque
             return self.qeue.popleft()
         else:
+            # Do image processing
+            layer_config = self.GridInfoList[self.currentLayer]
+            image_stitcher = ImageStitcher(layer_config[6], layer_config[7], self.image_array)
+            layer_image = image_stitcher.merge_trivial()
+            cv2.imwrite(os.path.join(self.currentPrintJobDir, "layer"+str(self.currentLayer)+".png"), layer_image)
+            self.image_array = []
+
+
             self.currentLayer += 1 #Increment layer when qeue was empty
             self.gridIndex = 0 #Reset Grid Index
+            if(self._printer.is_paused()):
+                print "resume print"
+                self._printer.resume_print()
             return(None)
 
-    def copyImageFiles(self, srcpath, suffix):
-        self._logger.info( "Copy Image from: %s", srcpath )
-        shutil.copyfile(srcpath, self.getProperTargetPathName(suffix))
-
-    def getProperTargetPathName(self,filesuffix):
-        return os.path.join(self.currentPrintJobDir, 'Layer_{}'.format(self.currentLayer) + '_Tile_{}'.format(self.gridIndex)) + '.' + filesuffix
+    def copyImageFiles(self, srcpath):
+        name, ext = os.path.splitext(os.path.basename(srcpath))
+        dest = os.path.join(self.currentPrintJobDir, 'Layer_{}'.format(self.currentLayer) + '_Tile_{}'.format(self.gridIndex) + ext)
+        shutil.copyfile(srcpath, dest)
+        # and store into array for later processing
+        self.image_array.append(cv2.imread(srcpath))
 
     def getBasePath(self):
-        return os.path.join(self._settings.get(["target_folder"]), 'Printjob_{}'.format(self.getTimeStamp()))
-
-    def getTimeStamp(self):
-        ts = time.time()
-        timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d__%H'+'h'+'_%M'+'m'+'_%S'+'s')
-        return timestamp
+        timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d__%H'+'h'+'_%M'+'m'+'_%S'+'s')
+        return os.path.join(self._settings.get(["target_folder"]), 'Printjob_{}'.format(timestamp))
 
     def _openGCodeFiles(self, inputName):
         gcode = open( inputName, 'r' )
@@ -269,22 +278,11 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
         return readData
 
     def _moveCameraToCamGrid(self ,Xpos ,Ypos):
-        # switch to pimary extruder, since the head camera is relative to this extruder and the offset to PNP nozzle might not be known (firmware offset)
-        self._printer.commands("T0")
         # move camera to part position
         cmd = "G1 X" + str(Xpos) + " Y" + str(Ypos) + " F" + str(self.FEEDRATE)
-        self._logger.info("Move camera to: " + cmd)
-        self._printer.commands("G1 Z" + str(self._currentZ+5) + " F" + str(self.FEEDRATE)) # lift printhead
+        self._logger.info("Move camera to: %s , %s",Xpos,Ypos)
         self._printer.commands(cmd)
-        self._printer.commands("G1 Z" + str(camera_offset[2]) + " F" + str(self.FEEDRATE)) # lower printhead
 
-    """This function sets up the necessary values for the camera lookup grid steps,
-    it tries to get legit values first and elsely uses hardcoded default values"""
-    def _setNewGridResolution(self):
-        # use the helper to retrieve the Pixel per Millimeter ratio
-        PixelPerMillimeter = self.get_camera_resolution("HEAD")
-        # Get an image to determine the camera resolution
-        self.get_camera_image(0, 0, self.get_camera_image_callback, True)
 
     def _computeLookupGridValues(self):
         PixelPerMillimeter = self.get_camera_resolution("HEAD")
