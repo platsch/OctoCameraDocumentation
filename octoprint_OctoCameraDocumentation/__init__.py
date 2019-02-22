@@ -41,8 +41,8 @@ import time
 import datetime
 
 from collections import deque
-from .GCode_processor import GCodeProcessor
-from .GCode_processor import CustomJSONEncoder as CoordJSONify
+from .GCodeProcessor import GCodeProcessor
+from .GCodeProcessor import CustomJSONEncoder as CoordJSONify
 from .GridGenerator import CameraGridMaker
 from .ImageStitcher import ImageStitcher
 
