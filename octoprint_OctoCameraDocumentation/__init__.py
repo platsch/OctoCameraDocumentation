@@ -234,7 +234,7 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
             # Copy found files over to the target destination folder
             self.copyImageFiles(path)
             self._logger.info( "Copied Image to: %s", self.getBasePath() )
-            # Get new element and continue tacking pictures if qeue not empty
+            # Get new element and continue taking pictures if qeue not empty
             elem = self.getNewQeueElem()
             if(elem):
                 self.get_camera_image(elem.x, elem.y, self.get_camera_image_callback, False)
@@ -256,7 +256,8 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
             # Do image processing
             layer_config = self.GridInfoList[self.currentLayer]
             image_stitcher = ImageStitcher(layer_config[6], layer_config[7], self._settings.get_int(["overlap"]), self.image_array)
-            layer_image = image_stitcher.merge_trivial()
+            #layer_image = image_stitcher.merge_trivial()
+            layer_image = image_stitcher.merge_stitching()
             cv2.imwrite(os.path.join(self.currentPrintJobDir, "layer"+str(self.currentLayer)+".png"), layer_image)
             self.image_array = []
 
