@@ -3,7 +3,7 @@ Created on 18.07.2017
 @author: Florens Wasserfall, Dennis Struhs
 '''
 
-from GCode_processor import Coordinate
+from GCodeProcessor import Coordinate
 from copy import deepcopy
 
 class CameraGridMaker:
@@ -25,29 +25,31 @@ class CameraGridMaker:
         GCode = layerGCode[layer]
 
         # find bounding box
-        if(len(GCode) > 0):
-            self.valid = True
-            self.minX = GCode[0].x
-            self.maxX = GCode[0].x
-            self.minY = GCode[0].y
-            self.maxY = GCode[0].y
+        for tool in GCode:
+            if(len(tool) > 0 and not self.valid):
+                self.valid = True
+                self.minX = tool[0].a.x
+                self.maxX = tool[0].a.x
+                self.minY = tool[0].a.y
+                self.maxY = tool[0].a.y
 
-        for c in GCode:
-            if(c.x < self.minX):
-                self.minX = c.x
-            if(c.x > self.maxX):
-                self.maxX = c.x
-            if(c.y < self.minY):
-                self.minY = c.y
-            if(c.y > self.maxY):
-                self.maxY = c.y
+            for c in tool:
+                for p in [c.a, c.b]:
+                    if(p.x < self.minX):
+                        self.minX = p.x
+                    if(p.x > self.maxX):
+                        self.maxX = p.x
+                    if(p.y < self.minY):
+                        self.minY = p.y
+                    if(p.y > self.maxY):
+                        self.maxY = p.y
 
 
     # return list of coordinates where images should be taken
     def getCameraCoords(self):
         result = []
         # do we have any data?
-        if self.minX is not None:
+        if self.valid:
             x_range = abs(self.maxX - self.minX)
             y_range = abs(self.maxY - self.minY)
             rows = self.getGridRows()

@@ -20,15 +20,10 @@ function camGrid(width, height, infoList, currentSelectedLayer, GCodeCoordinates
         _drawRectangularGrid();
     };
 
-    self.drawPrintables = function() {
-        // console.log("Draw Printables entered")
-        // console.log("Resolution of the Cam box is width: " + _camBoxWidth + " height was: " + _camBoxHeight)
-        // console.log("First GCode coordinate X: " + _GCodeCoordinates[0][0][0] + " Y: " + _GCodeCoordinates[0][0][0])
-        _drawLinesOnCanvas(_GCodeCoordinates,_currentSelectedLayer,0.25,"black");
-    }
-
     self.drawGCodeLines = function() {
-        _drawLinesOnCanvas(_GCodeCoordinates,_currentSelectedLayer,0.25,"black");
+        for (var tool = 0; tool < _GCodeCoordinates[_currentSelectedLayer].length; tool++){
+            _drawLinesOnCanvas(_GCodeCoordinates[currentSelectedLayer][tool],0.25,"black");
+        }
         // Draw a circle in the centerX
         _drawCircle(_centerX,_centerY,1,"rgb(255,255,0)");
     }
@@ -38,7 +33,7 @@ function camGrid(width, height, infoList, currentSelectedLayer, GCodeCoordinates
     }
 
     self.drawCameraPathLines = function(){
-        _drawLinesOnCanvas(_cameraCoordinates,_currentSelectedLayer,0.5,"rgb(255,0,0)");
+        _drawLinesOnCanvas(_cameraCoordinates[_currentSelectedLayer],0.5,"rgb(255,0,0)");
     }
 
     self.drawCameragrid = function() {
@@ -60,10 +55,10 @@ function camGrid(width, height, infoList, currentSelectedLayer, GCodeCoordinates
         _maxY = infoList[_currentSelectedLayer][2];
     }
 
-    function _drawLinesOnCanvas(inputList,inputLayer,linewidth,color) {
+    function _drawLinesOnCanvas(inputList,linewidth,color) {
         var ctx = _trayCanvas.getContext("2d");
         if (_trayCanvas && _trayCanvas.getContext) {
-            for (var i = 0 ; i < inputList[inputLayer].length-1 ; ++i){
+            for (var i = 0 ; i < inputList.length ; ++i){
                 ctx.save();
                 var x = ctx.canvas.width/2;
                 var y = ctx.canvas.height/2;
@@ -73,8 +68,8 @@ function camGrid(width, height, infoList, currentSelectedLayer, GCodeCoordinates
                 ctx.strokeStyle = color;
                 ctx.lineWidth = linewidth;
                 ctx.beginPath();
-                ctx.moveTo(inputList[inputLayer][i][0], inputList[inputLayer][i][1]);
-                ctx.lineTo(inputList[inputLayer][i+1][0], inputList[inputLayer][i+1][1]);
+                ctx.moveTo(inputList[i][0][0], inputList[i][0][1]);
+                ctx.lineTo(inputList[i][1][0], inputList[i][1][1]);
                 ctx.stroke();
                 ctx.restore();
             }

@@ -110,11 +110,15 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
 
     def get_settings_defaults(self):
         return{
-            "target_folder" : "C:\Desktop",
-            "picture_width" : 800,
-            "picture_height" : 800,
-            "overlap" : 20,
-            "active" : True
+            "target_folder": "C:\Desktop",
+            "picture_width": 800,
+            "picture_height": 800,
+            "overlap": 20,
+            "extruders" : {
+                "plastic": 0,
+                "conductive": 1
+            },
+            "active": True
         }
 
     def get_template_configs(self):
@@ -157,7 +161,7 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
                 file = self._openGCodeFiles(uploadsPath)
 
                 # Extract layer-wise gcodes
-                gcode_processor = GCodeProcessor(file)
+                gcode_processor = GCodeProcessor(file, max(int(self._settings.get(["extruders", "plastic"])), int(self._settings.get(["extruders", "conductive"]))))
                 self.GCoordsList = gcode_processor.gcodePerLayer()
 
                 #Get the values for the Camera grid box sizes
@@ -171,6 +175,8 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
 
                 self._logger.info("Created the camera lookup grid succesfully from the file: %s", payload.get("file"))
                 self._logger.info( "Current Target folder setting is: %s", self._settings.get(["target_folder"]))
+                self.image_array = []
+                self.currentLayer = 0
                 self._updateUI("FILE", "")
 
             # Create new Folder for dropping the images for the new printjob
@@ -260,6 +266,7 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
             layer_image = image_stitcher.merge_stitching()
             cv2.imwrite(os.path.join(self.currentPrintJobDir, "layer"+str(self.currentLayer)+".png"), layer_image)
             self.image_array = []
+            self.currentLayer = 0
 
 
             self.currentLayer += 1 #Increment layer when qeue was empty

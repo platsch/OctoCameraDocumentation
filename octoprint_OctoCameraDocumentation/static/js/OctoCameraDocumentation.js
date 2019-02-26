@@ -59,7 +59,7 @@ $(function() {
             _updateLayerHeader();
 
             self.layerDownEnabled(selectedLayer > 0);
-            self.layerUpEnabled(selectedLayer < gcodeCoords.length-1);
+            self.layerUpEnabled(selectedLayer < gcodeCoords.length);
         };
 
         self.decrementLayer = function() {
@@ -70,7 +70,7 @@ $(function() {
             _updateLayerHeader();
 
             self.layerDownEnabled(selectedLayer > 0);
-            self.layerUpEnabled(selectedLayer < gcodeCoords.length-1);
+            self.layerUpEnabled(selectedLayer < gcodeCoords.length);
         };
 
         self.onTabChange = function(current, previous) {
@@ -107,7 +107,7 @@ $(function() {
                         }
                         if (selectedLayer != undefined) {
                             self.layerDownEnabled(false);
-                            self.layerUpEnabled(gcodeCoords.length-1 > 0);
+                            self.layerUpEnabled(gcodeCoords.length > 0);
                         }
             		      }
                   //Set used camera resoiuton
