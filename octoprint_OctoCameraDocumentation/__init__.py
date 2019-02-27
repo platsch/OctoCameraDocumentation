@@ -183,6 +183,8 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
             if(event == "PrintStarted"):
                 self.currentPrintJobDir = self.getBasePath()
                 os.mkdir(self.currentPrintJobDir)
+                self.currentLayer = 0
+                self.image_array = []
 
     def _createCameraGrid(self,inputList,CamResX,CamResY):
         templist = []
@@ -229,6 +231,8 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
             if(self._settings.get(["active"])):
                 self.currentPrintJobDir = self.getBasePath()
                 os.mkdir(self.currentPrintJobDir)
+                self.currentLayer = 0
+                self.image_array = []
             return "" # swallow custom gcodes even if not active
 
 
@@ -266,7 +270,6 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
             layer_image = image_stitcher.merge_stitching()
             cv2.imwrite(os.path.join(self.currentPrintJobDir, "layer"+str(self.currentLayer)+".png"), layer_image)
             self.image_array = []
-            self.currentLayer = 0
 
 
             self.currentLayer += 1 #Increment layer when qeue was empty
