@@ -55,12 +55,12 @@ class CameraGridMaker:
             rows = self.getGridRows()
             cols = self.getGridCols()
 
-            x_start_offset = (rows * self.CamResX - x_range) / 2
-            y_start_offset = (cols * self.CamResY - y_range) / 2
+            x_start_offset = (cols * self.CamResX - x_range) / 2
+            y_start_offset = (rows * self.CamResY - y_range) / 2
             x = self.minX - x_start_offset
             y = self.minY - y_start_offset
-            for col in range(cols):
-                for row in range(rows):
+            for row in range(rows):
+                for col in range(cols):
                     result.append(Coordinate(x + self.CamResX/2, y + self.CamResY/2))
                     x += self.CamResX
                 y += self.CamResY
@@ -69,12 +69,12 @@ class CameraGridMaker:
         return result
 
     def getGridRows(self):
-        x_range = abs(self.maxX - self.minX)
-        return int(x_range / self.CamResX) +1
-
-    def getGridCols(self):
         y_range = abs(self.maxY - self.minY)
         return int(y_range / self.CamResY) +1
+
+    def getGridCols(self):
+        x_range = abs(self.maxX - self.minX)
+        return int(x_range / self.CamResX) +1
 
     def getMinX(self):
         return self.minX
