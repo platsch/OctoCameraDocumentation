@@ -158,16 +158,16 @@ class ImageAnalyzer:
         result_image = image.copy()
         result_bool = True
         if(len(self.gcode[extruder_num]) > 1):
+            circle_mask = np.zeros((scaled_extrusion_width, scaled_extrusion_width), np.uint8)
+            cv2.circle(circle_mask, (scaled_extrusion_width/2, scaled_extrusion_width/2), scaled_extrusion_width/2, 255, -1)
+            circle_pixels = circle_mask[circle_mask == 255].shape[0]
             for g in self.gcode[extruder_num]:
                 distance = 0
                 while (distance < g.length()):
                     p = g.point_at(distance)
-                    circle_mask = np.zeros((masked_image.shape[0], masked_image.shape[1]), np.uint8)
-                    #circle_mask = 255 - circle_mask
-                    cv2.circle(circle_mask, self._translate(p.x, p.y), scaled_extrusion_width/2, 255, -1)
-                    circle_pixels = circle_mask[circle_mask == 255].shape[0]
-                    working_mask = masked_image
-                    overlay = cv2.bitwise_and(masked_image, masked_image, mask=circle_mask)
+                    pos_x, pos_y = self._translate(p.x, p.y)
+                    roi = masked_image[pos_y-scaled_extrusion_width/2:pos_y+scaled_extrusion_width/2, pos_x-scaled_extrusion_width/2:pos_x+scaled_extrusion_width/2]
+                    overlay = cv2.bitwise_and(roi, roi, mask=circle_mask)
                     local_pixels = overlay[np.all(overlay == marker_color, axis=-1)]
                     if(local_pixels.shape[0]/float(circle_pixels) < 0.3):
                         cv2.circle(result_image, self._translate(p.x, p.y), scaled_extrusion_width/2, (0, 0, 255), -1)
