@@ -6,6 +6,7 @@ Created on 03.06.2017
 
 import re
 import json
+import math
 
 #===============================================================================
 # Help Classes
@@ -15,10 +16,29 @@ class Coordinate:
     def __init__(self, x, y):
         self.x = x
         self.y = y
+
+    def distance_to(self, point):
+        dx = point.x - self.x
+        dy = point.y - self.y
+        return math.sqrt(dx*dx + dy*dy)
+
 class Line:
     def __init__(self, a, b):
         self.a = a
         self.b = b
+
+    def length(self):
+        return self.a.distance_to(self.b)
+
+    def point_at(self, distance):
+        length = self.length()
+        result = Coordinate(self.a.x, self.a.y)
+        if (self.a.x != self.b.x):
+            result.x = self.a.x + (self.b.x - self.a.x) * distance / length
+        if (self.a.y != self.b.y):
+            result.y = self.a.y + (self.b.y - self.a.y) * distance / length
+        return result
+
 
 #Offers serialization of the Coordinate custom Object
 class CustomJSONEncoder(json.JSONEncoder):
