@@ -20,7 +20,7 @@ from sklearn.svm import LinearSVC
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-base_path = "testimages/conductive"
+base_path = "testimages/white"
 gcode_file = "cube_wires.gcode"
 layer = 3
 
@@ -45,6 +45,7 @@ grid = grid_maker.getCameraCoords()
 
 # open image
 image = cv2.imread(image_file)
+#image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
 start_time = time.time()
 
@@ -58,7 +59,7 @@ inverse_mask = 255 - mask
 positive_mask = cv2.bitwise_or(image, image, mask=inverse_mask)
 cv2.imwrite(positive_mask_file, positive_mask)
 
-label_img = ia.mark_extruder_pixels(extruder_num = 1, max_extruder_num = 1, extrusion_width = 0.5)
+label_img = ia.mark_extruder_pixels(extruder_num = 1, max_extruder_num = 1, extrusion_width = 0.5, HSV = True)
 
 # search for defects
 result, highlighted_image = ia.traverse_gcode(label_img, image, extruder_num = 1, extrusion_width = 0.6)
