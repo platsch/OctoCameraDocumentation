@@ -20,20 +20,24 @@ from sklearn.svm import LinearSVC
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-gcode_file = "testimages/conductive/cube_wires.gcode"
-image_file = "testimages/conductive/Layer_3_result.png"
-result_file = "testimages/conductive/result.png"
-overlay_file = "testimages/conductive/overlay.png"
-csv_bgr_file = "testimages/conductive/pixels_bgr.csv"
-csv_hsv_file = "testimages/conductive/pixels_hsv.csv"
-label_file = "testimages/conductive/label.png"
+base_path = "testimages/conductive"
+gcode_file = "cube_wires.gcode"
 layer = 3
+
+gcode_file = os.path.join(base_path, gcode_file)
+image_file = os.path.join(base_path, 'Layer_{}'.format(layer) + '_result.png')
+positive_mask_file = os.path.join(base_path, 'Layer_{}'.format(layer) + '_result_positive_mask.png')
+negative_mask_file = os.path.join(base_path, 'Layer_{}'.format(layer) + '_result_negative_mask.png')
+labeled_file = os.path.join(base_path, 'Layer_{}'.format(layer) + '_result_labeled_pixels.png')
+result_highlight_file = os.path.join(base_path, 'Layer_{}'.format(layer) + '_result_highlighted.png')
+
+
 
 # import gcode file
 gcode = open(gcode_file, 'r')
 readData = gcode.readlines()
 gcode.close()
-gcode_processor = GCodeProcessor.GCodeProcessor(readData, 1)
+gcode_processor = GCodeProcessor.GCodeProcessor(readData, max_extruder_num = 1)
 gcode_list = gcode_processor.gcodePerLayer()
 
 grid_maker = GridGenerator.CameraGridMaker(gcode_list,layer,14.76015,14.76015)
@@ -45,61 +49,22 @@ image = cv2.imread(image_file)
 start_time = time.time()
 
 ia = ImageAnalyzer.ImageAnalyzer(gcode_list[layer], image, 54.2, 54.3, grid_maker.getMinX(), grid_maker.getMinY(), grid_maker.getMaxX(), grid_maker.getMaxY())
-mask = ia.extruder_mask(1, 0.5)
+mask = ia.extruder_mask(extruder_num = 1, extrusion_width = 0.6)
 
-result = cv2.bitwise_and(image, image, mask=mask)
-cv2.imwrite(result_file, result)
+negative_mask = cv2.bitwise_and(image, image, mask=mask)
+cv2.imwrite(negative_mask_file, negative_mask)
 
 inverse_mask = 255 - mask
-overlay = cv2.bitwise_or(image, image, mask=inverse_mask)
-cv2.imwrite(overlay_file, overlay)
+positive_mask = cv2.bitwise_or(image, image, mask=inverse_mask)
+cv2.imwrite(positive_mask_file, positive_mask)
 
+label_img = ia.mark_extruder_pixels(extruder_num = 1, max_extruder_num = 1, extrusion_width = 0.5)
 
-# Export pixel csv
-pixels_0 = ia.extruder_pixels(0, 0.3, HSV=True, limit = 0)
-pixels_1 = ia.extruder_pixels(1, 0.5, HSV=True, limit = 0)
+# search for defects
+result, highlighted_image = ia.traverse_gcode(label_img, image, extruder_num = 1, extrusion_width = 0.6)
 
-# take random subsample
-svc_samples = 1000
-if(pixels_0.shape[0] > svc_samples):
-	idx = np.random.randint(pixels_0.shape[0], size=svc_samples)
-	pixels_0 = pixels_0[idx,:]
-if(pixels_1.shape[0] > svc_samples):
-	idx = np.random.randint(pixels_1.shape[0], size=svc_samples)
-	pixels_1 = pixels_1[idx,:]
-
-# plot color distribution
-fig = plt.figure(figsize=(12, 8))
-ax = fig.add_subplot(111, projection='3d')
-ax.set_xlabel("H / Blue")
-ax.set_ylabel("S / Green")
-ax.set_zlabel("V / Red")
-#ax.scatter(pixels_0[:, 0], pixels_0[:, 1], pixels_0[:, 2], c="red", s = 0.5)
-#ax.scatter(pixels_1[:, 0], pixels_1[:, 1], pixels_1[:, 2], c="black", s = 0.5)
-#plt.show()
-
-
-# prepare CSV data
-pixels = np.vstack((pixels_0, pixels_1))
-class_0 = np.zeros(pixels_0.shape[0], dtype=int)
-class_1 = np.ones(pixels_1.shape[0], dtype=int)
-classes = np.hstack((class_0, class_1))
-
-#train svm
-clf = LinearSVC(max_iter = 1000, dual = False, tol = 1e-5, verbose = 1)
-clf.fit(pixels, classes)
-
-
-# mark missing ink
-#label_img = image
-label_img = result
-
-for row in range(label_img.shape[0]):
-	row_labels = clf.predict(label_img[row,:,:])
-	label_img[row,:,:][np.equal(row_labels, 0)] = [0, 0, 255]
-
-
-cv2.imwrite(label_file, label_img)
+cv2.imwrite(result_highlight_file, highlighted_image)
+cv2.imwrite(labeled_file, label_img)
 
 
 end_time = time.time();
