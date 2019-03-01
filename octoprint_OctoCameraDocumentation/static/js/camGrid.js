@@ -22,7 +22,7 @@ function camGrid(width, height, infoList, currentSelectedLayer, GCodeCoordinates
 
     self.drawGCodeLines = function() {
         for (var tool = 0; tool < _GCodeCoordinates[_currentSelectedLayer].length; tool++){
-            _drawLinesOnCanvas(_GCodeCoordinates[currentSelectedLayer][tool],0.25,"black");
+            _drawLinesOnCanvas(_GCodeCoordinates[_currentSelectedLayer][tool],0.25,"black");
         }
         // Draw a circle in the centerX
         _drawCircle(_centerX,_centerY,1,"rgb(255,255,0)");
@@ -33,7 +33,11 @@ function camGrid(width, height, infoList, currentSelectedLayer, GCodeCoordinates
     }
 
     self.drawCameraPathLines = function(){
-        _drawLinesOnCanvas(_cameraCoordinates[_currentSelectedLayer],0.5,"rgb(255,0,0)");
+        var line_list = [];
+        for (var i = 0; i < _cameraCoordinates[_currentSelectedLayer].length - 1 ; i++) {
+            line_list.push([_cameraCoordinates[_currentSelectedLayer][i], _cameraCoordinates[_currentSelectedLayer][i+1]])
+        }
+        _drawLinesOnCanvas(line_list,0.5,"rgb(255,0,0)");
     }
 
     self.drawCameragrid = function() {
