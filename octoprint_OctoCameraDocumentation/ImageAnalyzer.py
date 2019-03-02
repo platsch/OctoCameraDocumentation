@@ -86,18 +86,18 @@ class ImageAnalyzer:
             pixels_other = pixels_other[idx,:]
 
         # plot color distribution
-        fig = plt.figure(figsize=(12, 8))
+        fig = plt.figure(figsize=(15, 12))
         ax = fig.add_subplot(111, projection='3d')
         if(HSV):
-            ax.set_xlabel("H")
-            ax.set_ylabel("S")
-            ax.set_zlabel("V")
+            ax.set_xlabel("Hue")
+            ax.set_ylabel("Saturation")
+            ax.set_zlabel("Value")
         else:
             ax.set_xlabel("Blue")
             ax.set_ylabel("Green")
             ax.set_zlabel("Red")
-        #ax.scatter(pixels_extruder[:, 0], pixels_extruder[:, 1], pixels_extruder[:, 2], c="red", s = 0.5)
-        #ax.scatter(pixels_other[:, 0], pixels_other[:, 1], pixels_other[:, 2], c="black", s = 0.5)
+        #ax.scatter(pixels_extruder[:, 0], pixels_extruder[:, 1], pixels_extruder[:, 2], c="red", s = 0.8)
+        #ax.scatter(pixels_other[:, 0], pixels_other[:, 1], pixels_other[:, 2], c="black", s = 0.8)
         #plt.show()
 
 
@@ -169,6 +169,7 @@ class ImageAnalyzer:
                     roi = masked_image[pos_y-scaled_extrusion_width/2:pos_y+scaled_extrusion_width/2, pos_x-scaled_extrusion_width/2:pos_x+scaled_extrusion_width/2]
                     overlay = cv2.bitwise_and(roi, roi, mask=circle_mask)
                     local_pixels = overlay[np.all(overlay == marker_color, axis=-1)]
+
                     if(local_pixels.shape[0]/float(circle_pixels) < 0.3):
                         cv2.circle(result_image, self._translate(p.x, p.y), scaled_extrusion_width/2, (0, 0, 255), -1)
                         result_bool = False
