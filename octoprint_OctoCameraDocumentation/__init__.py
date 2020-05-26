@@ -19,7 +19,7 @@
     Dennis Struhs <dennis.struhs@hamburg.de>
 """
 
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 
 import octoprint.plugin
@@ -49,6 +49,7 @@ from .ImageStitcher import ImageStitcher
 
 __plugin_name__ = "OctoCameraDocumentation"
 __plugin_version__ = "0.1"
+__plugin_pythoncompat__ = ">=2.7,<4"
 
 #instantiate plugin object and register hook for gcode injection
 def __plugin_load__():
@@ -99,8 +100,8 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
         #used for communication to UI
         self._pluginManager = octoprint.plugin.plugin_manager()
 
-    # Add helpers from the auxilary OctoPNP plug-in to grab images and camera resolution
-	helpers = self._pluginManager.get_helpers("OctoPNP", "get_head_camera_image", "get_head_camera_pxPerMM")
+        # Add helpers from the auxilary OctoPNP plug-in to grab images and camera resolution
+        helpers = self._pluginManager.get_helpers("OctoPNP", "get_head_camera_image", "get_head_camera_pxPerMM")
         if helpers and "get_head_camera_image" in helpers:
             self._logger.info("FOUND HELPER FOR TAKING IMAGE!!!")
             self.get_camera_image = helpers["get_head_camera_image"]
@@ -227,7 +228,7 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
 
             return "G4 P1" # return dummy command
 
-    	if "M945" in cmd:
+        if "M945" in cmd:
             if(self._settings.get(["active"])):
                 self.currentPrintJobDir = self.getBasePath()
                 os.mkdir(self.currentPrintJobDir)
@@ -275,7 +276,7 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
             self.currentLayer += 1 #Increment layer when qeue was empty
             self.gridIndex = 0 #Reset Grid Index
             if(self._printer.is_paused() or self._printer.is_pausing()):
-                print "resume print"
+                print("resume print")
                 self._printer.resume_print()
             return(None)
 

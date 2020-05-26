@@ -67,6 +67,7 @@ class ImageStitcher:
 
 
                         # match against left image
+                        print("col: " + str(col) + " row: " + str(row))
                         if(col > 0):
                             reg_h, cc_h, h_offset_x, h_offset_y = self._register_images(self.images[i-1], self.images[i], 2*self.overlap, 1, False)
                             if(cc_h < 0.5): # confidence to low, don't use this value
@@ -84,13 +85,20 @@ class ImageStitcher:
                             cc_v = (cc_v - 0.5)*2
                             w_h = cc_h / (cc_h + cc_v)
                             w_v = cc_v / (cc_h + cc_v)
+
+                            h_offset_x += positions[i-1][0]
+                            h_offset_y += positions[i-1][1]
+                            v_offset_x += positions[i-self.cols][0]
+                            v_offset_x += positions[i-self.cols][1]
+
+
                             h_offset_x *= w_h
                             h_offset_y *= w_h
                             v_offset_x *= w_v
                             v_offset_y *= w_v
 
-                            offset_x = int(round((h_offset_x+positions[i-1][0] + v_offset_x+positions[i-self.cols][0]) / 2))
-                            offset_y = int(round((h_offset_y+positions[i-1][1] + v_offset_y+positions[i-self.cols][1]) / 2))
+                            offset_x = int(round(h_offset_x + v_offset_x))
+                            offset_y = int(round(h_offset_y + v_offset_y))
                         elif(not reg_v and reg_h): # only horizontal available
                             offset_x = h_offset_x + positions[i-1][0]
                             offset_y = h_offset_y + positions[i-1][1]

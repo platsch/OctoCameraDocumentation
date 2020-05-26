@@ -3,7 +3,9 @@ Created on 18.07.2017
 @author: Florens Wasserfall, Dennis Struhs
 '''
 
-from GCodeProcessor import Coordinate
+from __future__ import absolute_import, division, print_function, unicode_literals
+
+from .GCodeProcessor import Coordinate
 from copy import deepcopy
 
 class CameraGridMaker:
