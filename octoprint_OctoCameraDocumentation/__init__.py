@@ -362,9 +362,9 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
                 )
         elif event is "HEADIMAGE":
             # open image and convert to base64
-            f = open(parameter,"r")
+            f = open(parameter,"rb")
             data = dict(
-                src = "data:image/" + os.path.splitext(parameter)[1] + ";base64,"+base64.b64encode(bytes(f.read()))
+                src = "data:image/" + os.path.splitext(parameter)[1] + ";base64," + str(base64.b64encode(bytes(f.read())), "utf-8")
             )
 
         message = dict(

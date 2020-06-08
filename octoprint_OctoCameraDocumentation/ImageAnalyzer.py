@@ -1,9 +1,11 @@
+# -*- coding: utf-8 -*-
 '''
 Created on 22.02.2018
 @author: Florens Wasserfall
 
 '''
 
+from __future__ import absolute_import, division, print_function, unicode_literals
 import re
 import cv2
 import numpy as np
@@ -37,7 +39,7 @@ class ImageAnalyzer:
         mask = self.extruder_mask(extruder_num, extrusion_width)
         image = self.image.copy()
         if(HSV):
-            print "converting to HSV!"
+            print("converting to HSV!")
             image = cv2.cvtColor(self.image, cv2.COLOR_BGR2HSV)
         templated = cv2.bitwise_and(image, image, mask=mask)
 
@@ -159,14 +161,14 @@ class ImageAnalyzer:
         result_bool = True
         if(len(self.gcode[extruder_num]) > 1):
             circle_mask = np.zeros((scaled_extrusion_width, scaled_extrusion_width), np.uint8)
-            cv2.circle(circle_mask, (scaled_extrusion_width/2, scaled_extrusion_width/2), scaled_extrusion_width/2, 255, -1)
+            cv2.circle(circle_mask, (int(scaled_extrusion_width/2), int(scaled_extrusion_width/2)), int(scaled_extrusion_width/2), 255, -1)
             circle_pixels = circle_mask[circle_mask == 255].shape[0]
             for g in self.gcode[extruder_num]:
                 distance = 0
                 while (distance < g.length()):
                     p = g.point_at(distance)
                     pos_x, pos_y = self._translate(p.x, p.y)
-                    roi = masked_image[pos_y-scaled_extrusion_width/2:pos_y+scaled_extrusion_width/2, pos_x-scaled_extrusion_width/2:pos_x+scaled_extrusion_width/2]
+                    roi = masked_image[pos_y-int(scaled_extrusion_width/2):pos_y+int(scaled_extrusion_width/2), pos_x-int(scaled_extrusion_width/2):pos_x+int(scaled_extrusion_width/2)]
                     overlay = cv2.bitwise_and(roi, roi, mask=circle_mask)
                     local_pixels = overlay[np.all(overlay == marker_color, axis=-1)]
 

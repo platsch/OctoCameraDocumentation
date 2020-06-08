@@ -175,7 +175,13 @@ class ImageStitcher:
         offset_y = 0
         cc = 0
         try:
-            (cc, warp_matrix) = cv2.findTransformECC (img1_gray,img2_gray,warp_matrix, cv2.MOTION_TRANSLATION, criteria)
+            # This seems to be a bug / broken API in some OpenCV Versions, requiring either 8 or max. 7 parameters. Probably fixed in future
+            # releases, but I leave this workaround for compatibility with older OpenCV installations
+            try:
+                (cc, warp_matrix) = cv2.findTransformECC (img1_gray, img2_gray, warp_matrix, cv2.MOTION_TRANSLATION, criteria, inputMask=None, gaussFiltSize=1)
+            except TypeError:
+                (cc, warp_matrix) = cv2.findTransformECC (img1_gray, img2_gray, warp_matrix, cv2.MOTION_TRANSLATION, criteria)
+
             #print "cc: " + str(cc)
             #print "warp_matrix: "
             #print warp_matrix

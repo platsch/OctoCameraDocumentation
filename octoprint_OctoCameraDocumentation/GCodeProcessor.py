@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 '''
 Created on 03.06.2017
 @author: Florens Wasserfall, Dennis Struhs
@@ -9,7 +10,7 @@ import json
 import math
 
 #===============================================================================
-# Help Classes
+# Helper Classes
 #===============================================================================
 
 class Coordinate:
