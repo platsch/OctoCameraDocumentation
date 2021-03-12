@@ -173,7 +173,7 @@ class ImageAnalyzer:
                     local_pixels = overlay[np.all(overlay == marker_color, axis=-1)]
 
                     if(local_pixels.shape[0]/float(circle_pixels) < 0.3):
-                        cv2.circle(result_image, self._translate(p.x, p.y), scaled_extrusion_width/2, (0, 0, 255), -1)
+                        cv2.circle(result_image, self._translate(p.x, p.y), scaled_extrusion_width//2, (0, 0, 255), -1)
                         result_bool = False
 
                     distance += extrusion_width/2
