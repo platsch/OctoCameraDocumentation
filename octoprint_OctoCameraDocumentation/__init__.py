@@ -266,10 +266,11 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
         else:
             # Do image processing
             layer_config = self.GridInfoList[self.currentLayer]
-            image_stitcher = ImageStitcher(layer_config[6], layer_config[7], self._settings.get_int(["overlap"]), self.image_array)
-            #layer_image = image_stitcher.merge_trivial()
-            layer_image = image_stitcher.merge_stitching()
-            cv2.imwrite(os.path.join(self.currentPrintJobDir, "layer"+str(self.currentLayer)+".png"), layer_image)
+            if len(self.image_array) > 0:
+                image_stitcher = ImageStitcher(layer_config[6], layer_config[7], self._settings.get_int(["overlap"]), self.image_array)
+                #layer_image = image_stitcher.merge_trivial()
+                layer_image = image_stitcher.merge_stitching()
+                cv2.imwrite(os.path.join(self.currentPrintJobDir, "layer"+str(self.currentLayer)+".png"), layer_image)
             self.image_array = []
 
 
