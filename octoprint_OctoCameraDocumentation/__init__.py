@@ -282,6 +282,10 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
             return(None)
 
     def copyImageFiles(self, srcpath):
+        # sometimes this function is called with an invalid path
+        if type(srcpath) is bool: 
+            self._logger.exception("No valid image path was handed to the plugin")
+            return
         name, ext = os.path.splitext(os.path.basename(srcpath))
         dest = os.path.join(self.currentPrintJobDir, 'Layer_{}'.format(self.currentLayer) + '_Tile_{}'.format(self.gridIndex) + ext)
         shutil.copyfile(srcpath, dest)
