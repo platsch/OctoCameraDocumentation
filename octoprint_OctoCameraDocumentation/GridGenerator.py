@@ -15,10 +15,10 @@ class CameraGridMaker:
     CamResY = None
 
     #Below values store the extreme values found during the processing process
-    minX = 0.0
-    minY = 0.0
-    maxX = 10.0
-    maxY = 10.0
+    minX = float('-inf')
+    minY = float('-inf')
+    maxX = float('inf')
+    maxY = float('inf')
     valid = False
 
     def __init__(self,layerGCode,layer,CamResX,CamResY):
