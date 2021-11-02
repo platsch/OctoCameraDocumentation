@@ -164,6 +164,8 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
                 # Extract layer-wise gcodes
                 gcode_processor = GCodeProcessor(file, max(int(self._settings.get(["extruders", "plastic"])), int(self._settings.get(["extruders", "conductive"]))))
                 self.GCoordsList = gcode_processor.gcodePerLayer()
+                if not self.GCoordsList:
+                    self._logger.exception("GCode processing failed.")
 
                 #Get the values for the Camera grid box sizes
                 self._computeLookupGridValues()
@@ -204,6 +206,10 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
                     grid_maker.getGridRows(),
                     grid_maker.getGridCols()])
             templist.append(grid_maker.getCameraCoords())
+            coords = ""
+            for c in templist[-1]:
+                coords += "[" + str(c.x) + "," + str(c.y) + "],"
+            self._logger.info( "Camera coordinates for layer %d: %s", count, coords)
             count += 1
 
         #Retrieve the necessary variables to be forwarded to the Octoprint Canvas
