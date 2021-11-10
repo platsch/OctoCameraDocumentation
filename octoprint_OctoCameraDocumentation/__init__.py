@@ -165,7 +165,7 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
                 gcode_processor = GCodeProcessor(file, max(int(self._settings.get(["extruders", "plastic"])), int(self._settings.get(["extruders", "conductive"]))))
                 self.GCoordsList = gcode_processor.gcodePerLayer()
                 if not self.GCoordsList:
-                    self._logger.exception("GCode processing failed.")
+                    self._logger.error("GCode processing failed.")
 
                 #Get the values for the Camera grid box sizes
                 self._computeLookupGridValues()
@@ -290,7 +290,7 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
     def copyImageFiles(self, srcpath):
         # sometimes this function is called with an invalid path
         if type(srcpath) is bool: 
-            self._logger.exception("No valid image path was handed to the plugin")
+            self._logger.error("No valid image path was handed to the plugin")
             return
         name, ext = os.path.splitext(os.path.basename(srcpath))
         dest = os.path.join(self.currentPrintJobDir, 'Layer_{}'.format(self.currentLayer) + '_Tile_{}'.format(self.gridIndex) + ext)
