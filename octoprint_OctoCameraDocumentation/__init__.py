@@ -252,7 +252,7 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
         # Get the resolution for the settings button here
         if(self.mode == "resolution_get"):
             self.our_pic_width,self.our_pic_height = self._get_image_size(img)
-            self._logger.info("The found image resolution was: %dx%d",self.our_pic_width,self.our_pic_width)
+            self._logger.info("The found image resolution was: %dx%d",self.our_pic_width,self.our_pic_height)
             self.mode = "normal" # Return to normal mode after finishing
         # else:
         #     return self._settings.get_int(["picture_width"]),
