@@ -28,10 +28,7 @@ from subprocess import call
 import os
 import time
 import datetime
-import shutil
 import json
-import struct
-import imghdr
 import cv2
 import numpy as np
 
@@ -239,14 +236,14 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
             return "" # swallow custom gcodes even if not active
 
 
-    def get_camera_image_callback(self, path):
+    def get_camera_image_callback(self, img):
         print("Entered image processing callback")
 
         # Get the picture for the grid tiles here
         if(self.mode == "normal"):
             # Copy found files over to the target destination folder
-            self.copyImageFiles(path)
-            self._logger.info( "Copied Image to: %s", self.getBasePath() )
+            self.saveImageFiles(img)
+            self._logger.info( "Saved image to: %s", self.getBasePath() )
             # Get new element and continue taking pictures if qeue not empty
             elem = self.getNewQeueElem()
             if(elem):
@@ -254,7 +251,7 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
 
         # Get the resolution for the settings button here
         if(self.mode == "resolution_get"):
-            self.our_pic_width,self.our_pic_height = self._get_image_size(path)
+            self.our_pic_width,self.our_pic_height = self._get_image_size(img)
             self._logger.info("The found image resolution was: %dx%d",self.our_pic_width,self.our_pic_width)
             self.mode = "normal" # Return to normal mode after finishing
         # else:
@@ -283,16 +280,16 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
                 self._printer.resume_print()
             return(None)
 
-    def copyImageFiles(self, srcpath):
-        # sometimes this function is called with an invalid path
-        if type(srcpath) is bool: 
-            self._logger.error("No valid image path was handed to the plugin")
+    def saveImageFiles(self, img):
+        # sometimes this function is called with an invalid image
+        if type(img) is not np.ndarray: 
+            self._logger.error("No valid image was handed to the plugin")
             return
-        name, ext = os.path.splitext(os.path.basename(srcpath))
-        dest = os.path.join(self.currentPrintJobDir, 'Layer_{}'.format(self.currentLayer) + '_Tile_{}'.format(self.gridIndex) + ext)
-        shutil.copyfile(srcpath, dest)
+        # save the image
+        dest = os.path.join(self.currentPrintJobDir, 'Layer_{}'.format(self.currentLayer) + '_Tile_{}'.format(self.gridIndex) + '.jpg')
+        cv2.imwrite(dest, img)
         # and store into array for later processing
-        self.image_array.append(cv2.imread(srcpath))
+        self.image_array.append(img)
 
     def getBasePath(self):
         timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d__%H'+'h'+'_%M'+'m'+'_%S'+'s')
@@ -313,38 +310,11 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
     """This function retrieves the resolution of the .png, .gif or .jpeg image file passed into it.
     This function was copypasted from https://stackoverflow.com/questions/8032642/how-to-obtain-image-size-using-standard-python-class-without-using-external-lib
     :param fname: Contains the filename of the file """
-    def _get_image_size(self, fname):
-        with open(fname, 'rb') as fhandle:
-            head = fhandle.read(24)
-            if len(head) != 24:
-                return
-            if imghdr.what(fname) == 'png':
-                check = struct.unpack('>i', head[4:8])[0]
-                if check != 0x0d0a1a0a:
-                    return
-                width, height = struct.unpack('>ii', head[16:24])
-            elif imghdr.what(fname) == 'gif':
-                width, height = struct.unpack('<HH', head[6:10])
-            elif imghdr.what(fname) == 'jpeg':
-                try:
-                    fhandle.seek(0) # Read 0xff next
-                    size = 2
-                    ftype = 0
-                    while not 0xc0 <= ftype <= 0xcf:
-                        fhandle.seek(size, 1)
-                        byte = fhandle.read(1)
-                        while ord(byte) == 0xff:
-                            byte = fhandle.read(1)
-                        ftype = ord(byte)
-                        size = struct.unpack('>H', fhandle.read(2))[0] - 2
-                    # We are at a SOFn block
-                    fhandle.seek(1, 1)  # Skip `precision' byte.
-                    height, width = struct.unpack('>HH', fhandle.read(4))
-                except Exception: #IGNORE:W0703
-                    return
-            else:
-                return
-            return width, height
+    def _get_image_size(self, img):
+        if type(img) is np.ndarray:
+            return img.shape[1], img.shape[0]
+        else:
+            return 0,0
 
     def _updateUI(self, event, parameter):
         data = dict(
