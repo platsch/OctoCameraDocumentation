@@ -24,12 +24,10 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import octoprint.plugin
 import flask
-import re
 from subprocess import call
 import os
 import time
 import datetime
-import base64
 import shutil
 import json
 import struct
@@ -70,9 +68,6 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
             octoprint.plugin.AssetPlugin,
             octoprint.plugin.SimpleApiPlugin,
             octoprint.plugin.BlueprintPlugin):
-
-    FEEDRATE = 4000.000
-
 
     def __init__(self):
         self.GCoordsList = []
@@ -230,7 +225,8 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
                 # Create the qeue for the printer camera coordinates
                 self.qeue = deque(self.CameraGridCoordsList[self.currentLayer])
                 elem = self.getNewQeueElem()
-                self.get_camera_image(elem.x, elem.y, self.get_camera_image_callback, True)
+                if(elem):
+                    self.get_camera_image(elem.x, elem.y, self.get_camera_image_callback, True)
 
             return "G4 P1" # return dummy command
 
@@ -307,13 +303,6 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
         readData = gcode.readlines()
         gcode.close()
         return readData
-
-    def _moveCameraToCamGrid(self ,Xpos ,Ypos):
-        # move camera to part position
-        cmd = "G1 X" + str(Xpos) + " Y" + str(Ypos) + " F" + str(self.FEEDRATE)
-        self._logger.info("Move camera to: %s , %s",Xpos,Ypos)
-        self._printer.commands(cmd)
-
 
     def _computeLookupGridValues(self):
         PixelPerMillimeter = self.get_camera_resolution("HEAD")
