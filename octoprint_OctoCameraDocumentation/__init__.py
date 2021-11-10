@@ -43,7 +43,7 @@ from .ImageStitcher import ImageStitcher
 
 
 __plugin_name__ = "OctoCameraDocumentation"
-__plugin_version__ = "0.1"
+__plugin_version__ = "0.2"
 __plugin_pythoncompat__ = ">=2.7,<4"
 
 #instantiate plugin object and register hook for gcode injection
