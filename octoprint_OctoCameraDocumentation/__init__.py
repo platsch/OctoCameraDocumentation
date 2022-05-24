@@ -31,6 +31,7 @@ import datetime
 import json
 import cv2
 import numpy as np
+import regex as re
 
 import time
 import datetime
@@ -84,6 +85,8 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
         self.currentPrintJobDir = None #Holds the current printjob folder dir
 
         self.mode = "normal" #Contains the mode for the camera callback
+
+        self.lastTool = "T0" #Saves the last tool to change back after documentation
 
         self.image_array = [] #Stores the incoming images in an array
         self.MergedImage = None #Is created by stitching the tile images together
@@ -213,31 +216,31 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
     Use the gcode hook to start the camera grid documentation processes.
     """
     def hook_gcode_queuing(self, comm_instance, phase, cmd, cmd_type, gcode, *args, **kwargs):
+        if re.search('^T\d', cmd):
+            self.lastTool = cmd
+
         if "M942" in cmd:
             if(self._settings.get(["active"])):
-                if(self._printer.is_printing() or self._printer.is_resuming()):
-                    self._printer.pause_print()
-                self._logger.info( "Qeued command to start the Camera documentation" )
-
                 # Create the qeue for the printer camera coordinates
                 self.qeue = deque(self.CameraGridCoordsList[self.currentLayer])
                 elem = self.getNewQeueElem()
                 if(elem):
+                    # Pause the print to prevent interruptions from octoprint
+                    if(self._printer.is_printing() or self._printer.is_resuming()):
+                        self._printer.pause_print()
+                    self._logger.info( "Qeued command to start the Camera documentation" )
                     self.get_camera_image(elem.x, elem.y, self.get_camera_image_callback, True)
-
-            return "G4 P1" # return dummy command
 
         if "M945" in cmd:
             if(self._settings.get(["active"])):
                 self.currentPrintJobDir = self.getBasePath()
                 os.mkdir(self.currentPrintJobDir)
+                self._logger.info( "Documentation Initialized in folder %s",  self.currentPrintJobDir)
                 self.currentLayer = 0
                 self.image_array = []
-            return "" # swallow custom gcodes even if not active
 
 
     def get_camera_image_callback(self, img):
-        print("Entered image processing callback")
 
         # Get the picture for the grid tiles here
         if(self.mode == "normal"):
@@ -276,8 +279,9 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
             self.currentLayer += 1 #Increment layer when qeue was empty
             self.gridIndex = 0 #Reset Grid Index
             if(self._printer.is_paused() or self._printer.is_pausing()):
-                print("resume print")
+                self._logger.info( "Layer documentation finished, resuming printing." )
                 self._printer.resume_print()
+            self._printer.commands(self.lastTool)
             return(None)
 
     def saveImageFiles(self, img):
