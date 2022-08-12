@@ -86,6 +86,7 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
 
         self.mode = "normal" #Contains the mode for the camera callback
 
+        self.currentTool = "T0" #saves the currently mounted tool
         self.lastTool = "T0" #Saves the last tool to change back after documentation
 
         self.image_array = [] #Stores the incoming images in an array
@@ -217,10 +218,11 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
     """
     def hook_gcode_queuing(self, comm_instance, phase, cmd, cmd_type, gcode, *args, **kwargs):
         if re.search('^T\d', cmd):
-            self.lastTool = cmd
+            self.currentTool = cmd
 
         if "M942" in cmd:
             if(self._settings.get(["active"])):
+                self.lastTool = self.currentTool 
                 # Create the qeue for the printer camera coordinates
                 self.qeue = deque(self.CameraGridCoordsList[self.currentLayer])
                 elem = self.getNewQeueElem()
