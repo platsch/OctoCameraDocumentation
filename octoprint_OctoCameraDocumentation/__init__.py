@@ -24,18 +24,14 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import octoprint.plugin
 import flask
-import re
 from subprocess import call
 import os
 import time
 import datetime
-import base64
-import shutil
 import json
-import struct
-import imghdr
 import cv2
 import numpy as np
+import regex as re
 
 import time
 import datetime
@@ -48,7 +44,7 @@ from .ImageStitcher import ImageStitcher
 
 
 __plugin_name__ = "OctoCameraDocumentation"
-__plugin_version__ = "0.1"
+__plugin_version__ = "0.2"
 __plugin_pythoncompat__ = ">=2.7,<4"
 
 #instantiate plugin object and register hook for gcode injection
@@ -71,9 +67,6 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
             octoprint.plugin.SimpleApiPlugin,
             octoprint.plugin.BlueprintPlugin):
 
-    FEEDRATE = 4000.000
-
-
     def __init__(self):
         self.GCoordsList = []
         self.CameraGridCoordsList = []
@@ -92,6 +85,9 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
         self.currentPrintJobDir = None #Holds the current printjob folder dir
 
         self.mode = "normal" #Contains the mode for the camera callback
+
+        self.currentTool = "T0" #saves the currently mounted tool
+        self.lastTool = "T0" #Saves the last tool to change back after documentation
 
         self.image_array = [] #Stores the incoming images in an array
         self.MergedImage = None #Is created by stitching the tile images together
@@ -164,6 +160,8 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
                 # Extract layer-wise gcodes
                 gcode_processor = GCodeProcessor(file, max(int(self._settings.get(["extruders", "plastic"])), int(self._settings.get(["extruders", "conductive"]))))
                 self.GCoordsList = gcode_processor.gcodePerLayer()
+                if not self.GCoordsList:
+                    self._logger.error("GCode processing failed.")
 
                 #Get the values for the Camera grid box sizes
                 self._computeLookupGridValues()
@@ -204,6 +202,10 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
                     grid_maker.getGridRows(),
                     grid_maker.getGridCols()])
             templist.append(grid_maker.getCameraCoords())
+            coords = ""
+            for c in templist[-1]:
+                coords += "[" + str(c.x) + "," + str(c.y) + "],"
+            self._logger.info( "Camera coordinates for layer %d: %s", count, coords)
             count += 1
 
         #Retrieve the necessary variables to be forwarded to the Octoprint Canvas
@@ -215,36 +217,38 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
     Use the gcode hook to start the camera grid documentation processes.
     """
     def hook_gcode_queuing(self, comm_instance, phase, cmd, cmd_type, gcode, *args, **kwargs):
+        if re.search('^T\d', cmd):
+            self.currentTool = cmd
+
         if "M942" in cmd:
             if(self._settings.get(["active"])):
-                if(self._printer.is_printing() or self._printer.is_resuming()):
-                    self._printer.pause_print()
-                self._logger.info( "Qeued command to start the Camera documentation" )
-
+                self.lastTool = self.currentTool 
                 # Create the qeue for the printer camera coordinates
                 self.qeue = deque(self.CameraGridCoordsList[self.currentLayer])
                 elem = self.getNewQeueElem()
-                self.get_camera_image(elem.x, elem.y, self.get_camera_image_callback, True)
-
-            return "G4 P1" # return dummy command
+                if(elem):
+                    # Pause the print to prevent interruptions from octoprint
+                    if(self._printer.is_printing() or self._printer.is_resuming()):
+                        self._printer.pause_print()
+                    self._logger.info( "Qeued command to start the Camera documentation" )
+                    self.get_camera_image(elem.x, elem.y, self.get_camera_image_callback, True)
 
         if "M945" in cmd:
             if(self._settings.get(["active"])):
                 self.currentPrintJobDir = self.getBasePath()
                 os.mkdir(self.currentPrintJobDir)
+                self._logger.info( "Documentation Initialized in folder %s",  self.currentPrintJobDir)
                 self.currentLayer = 0
                 self.image_array = []
-            return "" # swallow custom gcodes even if not active
 
 
-    def get_camera_image_callback(self, path):
-        print("Entered image processing callback")
+    def get_camera_image_callback(self, img):
 
         # Get the picture for the grid tiles here
         if(self.mode == "normal"):
             # Copy found files over to the target destination folder
-            self.copyImageFiles(path)
-            self._logger.info( "Copied Image to: %s", self.getBasePath() )
+            self.saveImageFiles(img)
+            self._logger.info( "Saved image to: %s", self.getBasePath() )
             # Get new element and continue taking pictures if qeue not empty
             elem = self.getNewQeueElem()
             if(elem):
@@ -252,8 +256,8 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
 
         # Get the resolution for the settings button here
         if(self.mode == "resolution_get"):
-            self.our_pic_width,self.our_pic_height = self._get_image_size(path)
-            self._logger.info("The found image resolution was: %dx%d",self.our_pic_width,self.our_pic_width)
+            self.our_pic_width,self.our_pic_height = self._get_image_size(img)
+            self._logger.info("The found image resolution was: %dx%d",self.our_pic_width,self.our_pic_height)
             self.mode = "normal" # Return to normal mode after finishing
         # else:
         #     return self._settings.get_int(["picture_width"]),
@@ -266,26 +270,32 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
         else:
             # Do image processing
             layer_config = self.GridInfoList[self.currentLayer]
-            image_stitcher = ImageStitcher(layer_config[6], layer_config[7], self._settings.get_int(["overlap"]), self.image_array)
-            #layer_image = image_stitcher.merge_trivial()
-            layer_image = image_stitcher.merge_stitching()
-            cv2.imwrite(os.path.join(self.currentPrintJobDir, "layer"+str(self.currentLayer)+".png"), layer_image)
+            if len(self.image_array) > 0:
+                image_stitcher = ImageStitcher(layer_config[6], layer_config[7], self._settings.get_int(["overlap"]), self.image_array)
+                #layer_image = image_stitcher.merge_trivial()
+                layer_image = image_stitcher.merge_stitching()
+                cv2.imwrite(os.path.join(self.currentPrintJobDir, "layer"+str(self.currentLayer)+".png"), layer_image)
             self.image_array = []
 
 
             self.currentLayer += 1 #Increment layer when qeue was empty
             self.gridIndex = 0 #Reset Grid Index
             if(self._printer.is_paused() or self._printer.is_pausing()):
-                print("resume print")
+                self._logger.info( "Layer documentation finished, resuming printing." )
                 self._printer.resume_print()
+            self._printer.commands(self.lastTool)
             return(None)
 
-    def copyImageFiles(self, srcpath):
-        name, ext = os.path.splitext(os.path.basename(srcpath))
-        dest = os.path.join(self.currentPrintJobDir, 'Layer_{}'.format(self.currentLayer) + '_Tile_{}'.format(self.gridIndex) + ext)
-        shutil.copyfile(srcpath, dest)
+    def saveImageFiles(self, img):
+        # sometimes this function is called with an invalid image
+        if type(img) is not np.ndarray: 
+            self._logger.error("No valid image was handed to the plugin")
+            return
+        # save the image
+        dest = os.path.join(self.currentPrintJobDir, 'Layer_{}'.format(self.currentLayer) + '_Tile_{}'.format(self.gridIndex) + '.jpg')
+        cv2.imwrite(dest, img)
         # and store into array for later processing
-        self.image_array.append(cv2.imread(srcpath))
+        self.image_array.append(img)
 
     def getBasePath(self):
         timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d__%H'+'h'+'_%M'+'m'+'_%S'+'s')
@@ -297,13 +307,6 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
         gcode.close()
         return readData
 
-    def _moveCameraToCamGrid(self ,Xpos ,Ypos):
-        # move camera to part position
-        cmd = "G1 X" + str(Xpos) + " Y" + str(Ypos) + " F" + str(self.FEEDRATE)
-        self._logger.info("Move camera to: %s , %s",Xpos,Ypos)
-        self._printer.commands(cmd)
-
-
     def _computeLookupGridValues(self):
         PixelPerMillimeter = self.get_camera_resolution("HEAD")
         # Divide the resolution by the PixelPerMillimeter ratio
@@ -313,38 +316,11 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
     """This function retrieves the resolution of the .png, .gif or .jpeg image file passed into it.
     This function was copypasted from https://stackoverflow.com/questions/8032642/how-to-obtain-image-size-using-standard-python-class-without-using-external-lib
     :param fname: Contains the filename of the file """
-    def _get_image_size(self, fname):
-        with open(fname, 'rb') as fhandle:
-            head = fhandle.read(24)
-            if len(head) != 24:
-                return
-            if imghdr.what(fname) == 'png':
-                check = struct.unpack('>i', head[4:8])[0]
-                if check != 0x0d0a1a0a:
-                    return
-                width, height = struct.unpack('>ii', head[16:24])
-            elif imghdr.what(fname) == 'gif':
-                width, height = struct.unpack('<HH', head[6:10])
-            elif imghdr.what(fname) == 'jpeg':
-                try:
-                    fhandle.seek(0) # Read 0xff next
-                    size = 2
-                    ftype = 0
-                    while not 0xc0 <= ftype <= 0xcf:
-                        fhandle.seek(size, 1)
-                        byte = fhandle.read(1)
-                        while ord(byte) == 0xff:
-                            byte = fhandle.read(1)
-                        ftype = ord(byte)
-                        size = struct.unpack('>H', fhandle.read(2))[0] - 2
-                    # We are at a SOFn block
-                    fhandle.seek(1, 1)  # Skip `precision' byte.
-                    height, width = struct.unpack('>HH', fhandle.read(4))
-                except Exception: #IGNORE:W0703
-                    return
-            else:
-                return
-            return width, height
+    def _get_image_size(self, img):
+        if type(img) is np.ndarray:
+            return img.shape[1], img.shape[0]
+        else:
+            return 0,0
 
     def _updateUI(self, event, parameter):
         data = dict(
@@ -360,12 +336,6 @@ class OctoCameraDocumentation(octoprint.plugin.StartupPlugin,
                     CamPixelResX = self.CamPixelX,
                     CamPixelResY = self.CamPixelY,
                 )
-        elif event is "HEADIMAGE":
-            # open image and convert to base64
-            f = open(parameter,"rb")
-            data = dict(
-                src = "data:image/" + os.path.splitext(parameter)[1] + ";base64," + str(base64.b64encode(bytes(f.read())), "utf-8")
-            )
 
         message = dict(
             event=event,

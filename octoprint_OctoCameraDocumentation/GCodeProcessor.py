@@ -87,6 +87,8 @@ class GCodeProcessor:
                 extruder = re.match('T\d', line)
                 if extruder is not None:
                     tool = int(extruder.group(0)[1])
+                    if tool > self.max_extruder_num:
+                        return []
 
                 # look for layer changes
                 layer_change = re.match('M942', line)

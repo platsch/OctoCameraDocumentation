@@ -6,7 +6,7 @@ Created on 18.07.2017
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-from GCodeProcessor import Coordinate
+from .GCodeProcessor import Coordinate
 from copy import deepcopy
 
 class CameraGridMaker:
@@ -15,11 +15,10 @@ class CameraGridMaker:
     CamResY = None
 
     #Below values store the extreme values found during the processing process
-    minX = 0.0
-    minY = 0.0
-    maxX = 10.0
-    maxY = 10.0
-    valid = False
+    minX = float('inf')
+    minY = float('inf')
+    maxX = float('-inf')
+    maxY = float('-inf')
 
     def __init__(self,layerGCode,layer,CamResX,CamResY):
         self.CamResX = CamResX
@@ -29,13 +28,6 @@ class CameraGridMaker:
 
         # find bounding box
         for tool in GCode:
-            if(len(tool) > 0 and not self.valid):
-                self.valid = True
-                self.minX = tool[0].a.x
-                self.maxX = tool[0].a.x
-                self.minY = tool[0].a.y
-                self.maxY = tool[0].a.y
-
             for c in tool:
                 for p in [c.a, c.b]:
                     if(p.x < self.minX):
@@ -52,7 +44,7 @@ class CameraGridMaker:
     def getCameraCoords(self):
         result = []
         # do we have any data?
-        if self.valid:
+        if self.minX < float('inf') and self.minY < float('inf') and self.maxX > float('-inf') and self.maxY > float('-inf'):
             x_range = abs(self.maxX - self.minX)
             y_range = abs(self.maxY - self.minY)
             rows = self.getGridRows()
@@ -72,12 +64,18 @@ class CameraGridMaker:
         return result
 
     def getGridRows(self):
-        y_range = abs(self.maxY - self.minY)
-        return int(y_range / self.CamResY) +1
+        if self.minY < float('inf') and self.maxY > float('-inf'):
+            y_range = abs(self.maxY - self.minY)
+            return int(y_range / self.CamResY) +1
+        else:
+            return 0
 
     def getGridCols(self):
-        x_range = abs(self.maxX - self.minX)
-        return int(x_range / self.CamResX) +1
+        if self.minX < float('inf') and self.maxX > float('-inf'):
+            x_range = abs(self.maxX - self.minX)
+            return int(x_range / self.CamResX) +1
+        else:
+            return 0
 
     def getMinX(self):
         return self.minX
